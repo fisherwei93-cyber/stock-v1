@@ -1,7 +1,7 @@
 import streamlit as st
 import os
 
-# ================= 0. 铁律配置 (V80.1: 空值熔断修复) =================
+# ================= 0. 铁律配置 (V81: 钛合金防爆 + 蒙特卡洛增强) =================
 for key in ['HTTP_PROXY', 'HTTPS_PROXY', 'http_proxy', 'https_proxy']:
     if key in os.environ:
         del os.environ[key]
@@ -19,7 +19,7 @@ import re
 import sys
 import time
 
-# 2. 样式死锁
+# 2. 样式死锁 (UI)
 st.markdown("""
 <style>
     /* 全局背景 */
@@ -89,6 +89,7 @@ st.markdown("""
     .risk-box { background: rgba(127, 29, 29, 0.5); border: 1px solid #ef4444; padding: 10px; border-radius: 6px; margin-top: 10px; font-size: 13px; color: #fff; }
     .note-box { background: #1e1b4b; border-left: 4px solid #6366f1; padding: 10px; font-size: 12px; color: #e0e7ff; margin-top: 5px; border-radius: 4px; line-height: 1.6; }
     .teach-box { background: #422006; border-left: 4px solid #f97316; padding: 10px; font-size: 12px; color: #ffedd5; margin-top: 10px; border-radius: 4px; }
+    .mc-box { background: #0f172a; border: 1px solid #1e293b; padding: 10px; border-radius: 6px; margin-top:5px; }
     
     .thesis-col { flex: 1; padding: 10px; border-radius: 6px; font-size: 13px; margin-top:5px; }
     .thesis-bull { background: rgba(6, 78, 59, 0.8); border: 1px solid #34d399; color: #fff; }
@@ -158,7 +159,6 @@ def fetch_stock_full_data(ticker):
         if h.empty: raise Exception("Yahoo无数据")
         
         # --- [NEW] 黑科技指标计算 ---
-        
         # 1. SuperTrend (超级趋势)
         h['TR'] = np.maximum(h['High'] - h['Low'], np.abs(h['High'] - h['Close'].shift(1)))
         h['ATR'] = h['TR'].rolling(10).mean()
@@ -176,7 +176,7 @@ def fetch_stock_full_data(ticker):
         h['DC_Upper'] = h['High'].rolling(20).max()
         h['DC_Lower'] = h['Low'].rolling(20).min()
         
-        # 4. FVG (Fair Value Gap) 聪明钱缺口
+        # 4. FVG (Fair Value Gap)
         h['FVG_Bull'] = (h['Low'] > h['High'].shift(2))
         h['FVG_Bear'] = (h['High'] < h['Low'].shift(2))
 
@@ -271,9 +271,11 @@ def fetch_stock_full_data(ticker):
                 opt_data = {"date": near_date, "calls": opt.calls, "puts": opt.puts}
         except: pass
 
-        # [FIX] 强制返回空字典而不是 None
+        # [FIX] 钛合金防爆门：强制保证 info 是字典
+        safe_info = s.info if s.info is not None else {}
+        
         return {
-            "history": h, "info": s.info or {}, "rt_price": rt_price,
+            "history": h, "info": safe_info, "rt_price": rt_price,
             "news": s.news, "upgrades": s.upgrades_downgrades,
             "fin": s.quarterly_financials, "inst": s.institutional_holders, "insider": s.insider_transactions,
             "compare": cmp_norm, "options": opt_data,
@@ -362,6 +364,8 @@ def calculate_vision_analysis(df, info):
 
     sups = filter_pts([p for p in pts if p['t']=="sup"], reverse=True)
     ress = filter_pts([p for p in pts if p['t']=="res"], reverse=False)
+    # [FIX] 安全获取 info 字段
+    if not isinstance(info, dict): info = {}
     eps_fwd = info.get('forwardEps'); val_data = f"{eps_fwd*25:.0f}-{eps_fwd*35:.0f} (25x-35x)" if eps_fwd else "N/A"
     
     rsi = df['RSI'].iloc[-1]; macd_val = df['MACD'].iloc[-1]
@@ -375,6 +379,7 @@ def calculate_vision_analysis(df, info):
     return {"growth": info.get('revenueGrowth', 0), "val_range": val_data, "sups": sups, "ress": ress, "tech": " | ".join(tech)}
 
 def calculate_quant_score(info, history):
+    if not isinstance(info, dict): info = {}
     score = 50; notes = []
     if not history.empty:
         c = history['Close'].iloc[-1]; ma50 = history['Close'].rolling(50).mean().iloc[-1]
@@ -454,6 +459,7 @@ def generate_bull_bear_thesis(df, info):
     else: bears.append("股价跌破年线 (长期熊市)")
     if rsi < 30: bulls.append("RSI超卖 (反弹预期)")
     if rsi > 70: bears.append("RSI超买 (回调风险)")
+    if not isinstance(info, dict): info = {}
     short = info.get('shortPercentOfFloat', 0)
     if short and short > 0.2: bulls.append("逼空潜力大 (Short Squeeze)")
     if short and short > 0.15: bears.append("做空拥挤 (机构看空)")
@@ -499,7 +505,11 @@ def render_documentation():
         <div class='wiki-title'>4. 蒙特卡洛预测 (Monte Carlo)</div>
         <div class='wiki-text'>
             <b>原理：</b> 计算机通过模拟未来 30 天的 100 种可能走势。<br>
-            <b>用法：</b> 它不是水晶球，不能告诉你确切价格。但它能告诉你“风险边界”。比如模拟结果显示只有 5% 的概率跌破 $100，那你就可以把止损设在 $100。
+            <b>计算根据：</b> 使用股票过去 1 年的“历史波动率” (Volatility) 和“漂移率” (Drift, 平均涨幅)，通过“几何布朗运动”公式进行随机游走模拟。<br>
+            <b>判断方法：</b><br>
+            - <b>悲观底线 (Bottom 5%)</b>：有 95% 的概率股价会高于此线。适合做止损位。<br>
+            - <b>乐观高点 (Top 5%)</b>：只有 5% 的概率股价能涨破此线。适合做止盈位。<br>
+            - <b>中位数 (Median)</b>：最可能的价格路径。
         </div>
     </div>
     
@@ -572,7 +582,7 @@ def render_main_app():
     c_main, c_fac = st.columns([2, 3])
     with c_main:
         st.metric(f"{ticker} 实时", f"${rt_price:.2f}", f"{chg:.2%}")
-        st.caption(f"{i.get('longName')} | {i.get('industry')}")
+        st.caption(f"{i.get('longName', ticker)} | {i.get('industry', 'Unknown')}")
         st.markdown("<div class='social-box'>", unsafe_allow_html=True)
         c_btn = st.columns(4)
         c_btn[0].link_button("🔥 谷歌搜", f"https://www.google.com/search?q=why+is+{ticker}+stock+moving+today")
@@ -647,6 +657,19 @@ def render_main_app():
                 fig_mc.add_trace(go.Scatter(y=[last_price]*days, mode='lines', line=dict(color='red', dash='dash'), name='当前价'))
                 fig_mc.update_layout(title=f"未来30天价格模拟 ({simulations}次)", height=350, template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)')
                 st.plotly_chart(fig_mc, use_container_width=True)
+                
+                # [NEW] 蒙特卡洛统计面板
+                final_prices = sim_df.iloc[-1].values
+                p5 = np.percentile(final_prices, 5)
+                p50 = np.percentile(final_prices, 50)
+                p95 = np.percentile(final_prices, 95)
+                st.markdown(f"""
+                <div class='mc-box'>
+                    <span style='color:#fca5a5'>📉 悲观底线 (P5): <b>${p5:.2f}</b></span><br>
+                    <span style='color:#e2e8f0'>⚖️ 中位数 (P50): <b>${p50:.2f}</b></span><br>
+                    <span style='color:#86efac'>🚀 乐观高点 (P95): <b>${p95:.2f}</b></span>
+                </div>
+                """, unsafe_allow_html=True)
         
         with st.expander("📉 进阶指标 (Z-Score/CMF/WR/筹码) [点击展开]", expanded=False):
             vp_price, vp_vol = calculate_volume_profile(h.iloc[-252:])
@@ -681,12 +704,13 @@ def render_main_app():
 
     with st.expander("🦁 市场雷达 & 基本面雷达 [点击展开]", expanded=False):
         c1, c2, c3, c4 = st.columns(4)
-        c1.metric("做空比例", fmt_pct(i.get('shortPercentOfFloat')))
-        c2.metric("Beta", fmt_num(i.get('beta')))
-        c3.metric("回补天数", fmt_num(i.get('shortRatio')))
-        c4.metric("股息率", fmt_pct(i.get('dividendYield')))
+        # [FIX] 双重熔断：先确保 i 是字典，再安全 get
+        safe_i = i if isinstance(i, dict) else {}
+        c1.metric("做空比例", fmt_pct(safe_i.get('shortPercentOfFloat')))
+        c2.metric("Beta", fmt_num(safe_i.get('beta')))
+        c3.metric("回补天数", fmt_num(safe_i.get('shortRatio')))
+        c4.metric("股息率", fmt_pct(safe_i.get('dividendYield')))
         
-        # [FIX] 独立封装的注解块
         st.markdown("""
         <div class='note-box'>
         <b>📖 雷达读数详解：</b><br>
@@ -700,12 +724,12 @@ def render_main_app():
         st.markdown("---")
         st.caption("🕸️ 基本面六维战力图 (Fundamental Spider)")
         f_data = {
-            'PE (反向)': 100 - min(100, i.get('forwardPE', 50) or 50),
-            'Profit Margin': (i.get('profitMargins', 0) or 0) * 100,
-            'ROE': (i.get('returnOnEquity', 0) or 0) * 100,
-            'Rev Growth': (i.get('revenueGrowth', 0) or 0) * 100,
-            'Short Ratio (反向)': 100 - min(100, ((i.get('shortPercentOfFloat', 0) or 0) * 100)*2),
-            'Analyst Rec': (6 - (i.get('recommendationMean', 3) or 3)) * 20
+            'PE (反向)': 100 - min(100, safe_i.get('forwardPE', 50) or 50),
+            'Profit Margin': (safe_i.get('profitMargins', 0) or 0) * 100,
+            'ROE': (safe_i.get('returnOnEquity', 0) or 0) * 100,
+            'Rev Growth': (safe_i.get('revenueGrowth', 0) or 0) * 100,
+            'Short Ratio (反向)': 100 - min(100, ((safe_i.get('shortPercentOfFloat', 0) or 0) * 100)*2),
+            'Analyst Rec': (6 - (safe_i.get('recommendationMean', 3) or 3)) * 20
         }
         df_radar = pd.DataFrame(dict(r=list(f_data.values()), theta=list(f_data.keys())))
         fig_radar = px.line_polar(df_radar, r='r', theta='theta', line_close=True)
