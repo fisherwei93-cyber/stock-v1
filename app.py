@@ -1,12 +1,12 @@
 import streamlit as st
 import os
 
-# ================= 0. Ironclad Config (V79.1: Hotfix) =================
+# ================= 0. 铁律配置 (V80: 百科全书 + 5大黑科技) =================
 for key in ['HTTP_PROXY', 'HTTPS_PROXY', 'http_proxy', 'https_proxy']:
     if key in os.environ:
         del os.environ[key]
 
-st.set_page_config(page_title="Morgan V1 (Ultimate)", layout="wide", page_icon="🦁")
+st.set_page_config(page_title="摩根·V1 (Ultimate)", layout="wide", page_icon="🦁")
 
 import yfinance as yf
 import pandas as pd
@@ -19,14 +19,14 @@ import re
 import sys
 import time
 
-# 2. Styling (Dark Mode)
+# 2. 样式死锁 (UI 终极优化)
 st.markdown("""
 <style>
-    /* Global Background */
+    /* 全局背景 */
     .stApp { background-color: #000000 !important; color: #FFFFFF !important; }
     section[data-testid="stSidebar"] { background-color: #111111 !important; }
 
-    /* High Visibility Metrics */
+    /* 指标高亮 */
     div[data-testid="stMetricValue"] {
         color: #FFFFFF !important; 
         font-size: 28px !important;
@@ -39,7 +39,7 @@ st.markdown("""
         font-weight: 700 !important;
     }
     
-    /* Expander Header Visibility */
+    /* 折叠栏优化 */
     .streamlit-expanderHeader {
         background-color: #222222 !important;
         border: 1px solid #444 !important;
@@ -56,7 +56,7 @@ st.markdown("""
         color: #FF9F1C !important;
     }
 
-    /* Vision L-Box */
+    /* 视野黄框 */
     .l-box {
         background-color: #FF9F1C;
         color: #000000 !important;
@@ -70,21 +70,23 @@ st.markdown("""
     .l-title { font-size: 18px; font-weight: 900; border-bottom: 2px solid #000; padding-bottom: 8px; margin-bottom: 12px; color: #000; }
     .l-item { display: flex; justify-content: space-between; align-items: center; font-size: 14px; font-weight: 600; border-bottom: 1px dashed rgba(0,0,0,0.2); padding: 4px 0; color: #000; }
     
-    /* Tags */
+    /* 标签 */
     .tg-s { background: rgba(0,0,0,0.1); padding: 1px 5px; border-radius: 4px; font-size: 11px; margin-left: 6px; color: #333; }
     .tg-m { background: #fffbeb; padding: 1px 5px; border-radius: 4px; font-size: 11px; margin-left: 6px; color: #854d0e; border: 1px solid #eab308; }
     .tg-h { background: #000; color: #FF9F1C; padding: 1px 6px; border-radius: 4px; font-size: 11px; margin-left: 6px; font-weight: 800; }
     
-    /* Score Card */
+    /* 评分卡 */
     .score-card { background: #1A1A1A; padding: 15px; border-radius: 12px; text-align: center; border: 1px solid #333; margin-bottom: 15px; }
     .sc-val { font-size: 42px; font-weight: 900; color: #4ade80; line-height: 1; }
     .sc-lbl { font-size: 12px; color: #D1D5DB; font-weight: bold; }
     
-    /* Watchlist Rows */
+    /* 列表项 */
     .wl-row { background-color: #1A1A1A; padding: 12px; margin-bottom: 8px; border-radius: 6px; border-left: 4px solid #555; cursor: pointer; display: flex; justify-content: space-between; align-items: center; border: 1px solid #333; color: #FFFFFF; }
     .wl-row:hover { border-left-color: #FF9F1C; background-color: #2A2A2A; }
     
     .social-box { display: flex; gap: 10px; margin-top: 10px; }
+    
+    /* 功能盒子 */
     .sig-box { background: rgba(6, 78, 59, 0.8); border: 1px solid #065f46; padding: 10px; border-radius: 6px; margin-top: 10px; font-size: 13px; color: #fff; }
     .risk-box { background: rgba(127, 29, 29, 0.5); border: 1px solid #ef4444; padding: 10px; border-radius: 6px; margin-top: 10px; font-size: 13px; color: #fff; }
     .note-box { background: #1e1b4b; border-left: 4px solid #6366f1; padding: 10px; font-size: 12px; color: #e0e7ff; margin-top: 5px; border-radius: 4px; line-height: 1.6; }
@@ -94,17 +96,18 @@ st.markdown("""
     .thesis-bull { background: rgba(6, 78, 59, 0.8); border: 1px solid #34d399; color: #fff; }
     .thesis-bear { background: rgba(127, 29, 29, 0.8); border: 1px solid #f87171; color: #fff; }
     
-    /* Wiki Styles */
+    /* 说明书样式 */
     .wiki-card { background: #1A1A1A; border: 1px solid #333; border-radius: 8px; padding: 20px; margin-bottom: 20px; }
-    .wiki-title { font-size: 18px; font-weight: bold; color: #FF9F1C; margin-bottom: 10px; border-bottom: 1px solid #444; padding-bottom: 5px; }
-    .wiki-text { font-size: 14px; color: #E5E7EB; line-height: 1.6; }
-    .wiki-tag { background: #374151; color: #fff; padding: 2px 6px; border-radius: 4px; font-size: 12px; margin-right: 5px; }
+    .wiki-title { font-size: 20px; font-weight: bold; color: #FF9F1C; margin-bottom: 15px; border-bottom: 1px solid #444; padding-bottom: 5px; }
+    .wiki-sub { font-size: 16px; font-weight: bold; color: #4ade80; margin-top: 10px; margin-bottom: 5px; }
+    .wiki-text { font-size: 14px; color: #E5E7EB; line-height: 1.8; margin-bottom: 10px; }
+    .wiki-tag { background: #374151; color: #fff; padding: 2px 6px; border-radius: 4px; font-size: 12px; margin-right: 5px; border: 1px solid #555; }
     
     header {visibility: hidden;}
 </style>
 """, unsafe_allow_html=True)
 
-# Dictionaries & Helpers
+# 字典 & 辅助函数
 FAMOUS_INSTITUTIONS = {"Vanguard":"先锋", "Blackrock":"贝莱德", "Morgan Stanley":"大摩", "Goldman":"高盛", "Jpmorgan":"小摩", "Citadel":"城堡", "State Street":"道富", "Berkshire":"伯克希尔"}
 RATING_MAP = {"Buy":"买入", "Hold":"持有", "Sell":"卖出", "Strong Buy":"强购", "Overweight":"增持", "Neutral":"中性", "Outperform":"跑赢"}
 FIN_MAP = {
@@ -144,7 +147,7 @@ except: HAS_YOUTUBE = False
 if 'watchlist' not in st.session_state: st.session_state.watchlist = ['TSLA', 'NVDA', 'AAPL', 'AMD', 'PLTR']
 if 'current_ticker' not in st.session_state: st.session_state.current_ticker = 'TSLA'
 
-# ================= 2. Data Engine =================
+# ================= 2. 数据引擎 =================
 
 @st.cache_data(ttl=300)
 def fetch_stock_full_data(ticker):
@@ -156,8 +159,38 @@ def fetch_stock_full_data(ticker):
         h = s.history(period="2y") 
         if h.empty: raise Exception("Yahoo无数据")
         
-        # --- Indicators ---
-        # VWAP
+        # --- [NEW] 黑科技指标计算 ---
+        
+        # 1. SuperTrend (超级趋势)
+        # TR = max(high-low, abs(high-prev_close), abs(low-prev_close))
+        # ATR = sma(TR, 10)
+        # Basic Upper/Lower Band = (High + Low) / 2 +/- multiplier * ATR
+        h['TR'] = np.maximum(h['High'] - h['Low'], np.abs(h['High'] - h['Close'].shift(1)))
+        h['ATR'] = h['TR'].rolling(10).mean()
+        multiplier = 3.0
+        hl2 = (h['High'] + h['Low']) / 2
+        h['ST_Upper'] = hl2 + (multiplier * h['ATR'])
+        h['ST_Lower'] = hl2 - (multiplier * h['ATR'])
+        # SuperTrend 逻辑简化版: Close > ST_Upper -> Buy
+        
+        # 2. Z-Score (乖离率)
+        # Z = (Close - MA20) / Std20
+        h['MA20'] = h['Close'].rolling(20).mean()
+        h['STD20'] = h['Close'].rolling(20).std()
+        h['Z_Score'] = (h['Close'] - h['MA20']) / h['STD20']
+        
+        # 3. Donchian Channels (唐奇安通道)
+        # Upper = Max(High, 20), Lower = Min(Low, 20)
+        h['DC_Upper'] = h['High'].rolling(20).max()
+        h['DC_Lower'] = h['Low'].rolling(20).min()
+        
+        # 4. FVG (Fair Value Gap) 聪明钱缺口
+        # Bullish FVG: Low[i] > High[i-2]
+        # Bearish FVG: High[i] < Low[i-2]
+        h['FVG_Bull'] = (h['Low'] > h['High'].shift(2))
+        h['FVG_Bear'] = (h['High'] < h['Low'].shift(2))
+
+        # 5. VWAP
         v = h['Volume'].values
         tp = (h['High'] + h['Low'] + h['Close']) / 3
         h['VWAP'] = (tp * v).cumsum() / v.cumsum()
@@ -168,41 +201,36 @@ def fetch_stock_full_data(ticker):
         ll = h['Low'].rolling(lookback).min()
         h['WR'] = -100 * (hh - h['Close']) / (hh - ll)
 
-        # MACD
+        # 基础指标
         exp12 = h['Close'].ewm(span=12, adjust=False).mean()
         exp26 = h['Close'].ewm(span=26, adjust=False).mean()
         h['MACD'] = exp12 - exp26
         h['Signal'] = h['MACD'].ewm(span=9, adjust=False).mean()
         h['Hist'] = h['MACD'] - h['Signal']
-        # RSI
+        
         delta = h['Close'].diff()
         gain = (delta.where(delta > 0, 0)).rolling(14).mean()
         loss = (-delta.where(delta < 0, 0)).rolling(14).mean()
         rs = gain / loss
         h['RSI'] = 100 - (100 / (1 + rs))
-        # KDJ
+        
         low_min = h['Low'].rolling(9).min()
         high_max = h['High'].rolling(9).max()
         h['RSV'] = (h['Close'] - low_min) / (high_max - low_min) * 100
         h['K'] = h['RSV'].ewm(com=2).mean()
         h['D'] = h['K'].ewm(com=2).mean()
         h['J'] = 3 * h['K'] - 2 * h['D']
-        # OBV
+        
         h['OBV'] = (np.sign(h['Close'].diff()) * h['Volume']).fillna(0).cumsum()
-        # CMF
+        
         mfm = ((h['Close'] - h['Low']) - (h['High'] - h['Close'])) / (h['High'] - h['Low'])
         mfv = mfm * h['Volume']
         h['CMF'] = mfv.rolling(20).sum() / h['Volume'].rolling(20).sum()
 
-        # MA/BOLL/ATR
-        h['TR'] = np.maximum(h['High'] - h['Low'], np.abs(h['High'] - h['Close'].shift(1)))
-        h['ATR'] = h['TR'].rolling(14).mean()
-        h['MA20'] = h['Close'].rolling(20).mean()
         h['MA50'] = h['Close'].rolling(50).mean()
         h['MA60'] = h['Close'].rolling(60).mean()
         h['MA120'] = h['Close'].rolling(120).mean()
         h['MA200'] = h['Close'].rolling(200).mean()
-        h['STD20'] = h['Close'].rolling(20).std()
         h['UPPER'] = h['MA20'] + 2*h['STD20']
         h['LOWER'] = h['MA20'] - 2*h['STD20']
         
@@ -230,7 +258,6 @@ def fetch_stock_full_data(ticker):
         h['Fib_500'] = min_p + 0.5 * diff
         h['Fib_618'] = min_p + 0.618 * diff
 
-        # Compare
         try:
             h_recent = h.iloc[-504:] 
             spy = yf.Ticker("SPY").history(period="2y")['Close']
@@ -315,7 +342,6 @@ def calculate_vision_analysis(df, info):
     ma200 = df['Close'].rolling(200).mean().iloc[-1]
     low_60 = df['Low'].tail(60).min(); high_60 = df['High'].tail(60).max()
     low_52w = df['Low'].tail(250).min(); high_52w = df['High'].tail(250).max()
-    # [FIXED HERE] Added high_20 definition
     high_20 = df['High'].tail(20).max()
     
     pts = []
@@ -444,7 +470,7 @@ def generate_bull_bear_thesis(df, info):
     while len(bears) < 3: bears.append("暂无明显空头信号")
     return bulls[:3], bears[:3]
 
-# [NEW] Documentation
+# ================= 4. 百科全书渲染 =================
 def render_documentation():
     st.title("📚 摩根·功能说明书 (Wiki)")
     
@@ -452,53 +478,85 @@ def render_documentation():
     <div class='wiki-card'>
         <div class='wiki-title'>1. 视野·交易计划 (Vision L-Box)</div>
         <div class='wiki-text'>
-            <b>核心逻辑：</b> 基于“L战法”的支撑压力系统。<br>
-            <span class='wiki-tag'>R1/R2</span> 阻力位：卖点参考。<br>
-            <span class='wiki-tag'>S1/S2</span> 支撑位：买点参考。<br>
-            <b>黄框</b>：是整个系统的大脑，直接告诉你现在是该买还是该卖。
+            <b>核心逻辑：</b> 自动计算的关键点位系统，相当于你的“作战地图”。<br>
+            <span class='wiki-tag'>R1/R2 (Resistance)</span>：压力位。股价涨到这里容易被打下来，是卖出或减仓的参考点。<br>
+            <span class='wiki-tag'>S1/S2 (Support)</span>：支撑位。股价跌到这里容易反弹，是买入或补仓的参考点。<br>
+            <b>用法：</b> 只要股价在黄框上方，就保持多头思维；跌破黄框，果断止损。
         </div>
     </div>
     
     <div class='wiki-card'>
         <div class='wiki-title'>2. 神奇九转 (TD Sequential)</div>
         <div class='wiki-text'>
-            <b>原理：</b> 寻找趋势衰竭点。<br>
-            <span style='color:#f87171'><b>红色 9 (高9)</b></span>：上涨动能耗尽，大概率回调（卖出信号）。<br>
-            <span style='color:#4ade80'><b>绿色 9 (低9)</b></span>：下跌动能衰竭，大概率反弹（抄底信号）。
+            <b>原理：</b> 这是一个专门用来抓“顶”和“底”的计数器。<br>
+            <span style='color:#f87171'><b>红色 9 (高9)</b></span>：当连续9根K线的收盘价都高于4天前的收盘价时触发。意味着上涨动能耗尽，大概率要回调。<b>（卖点）</b><br>
+            <span style='color:#4ade80'><b>绿色 9 (低9)</b></span>：当连续9根K线的收盘价都低于4天前的收盘价时触发。意味着下跌动能衰竭，大概率要反弹。<b>（买点）</b>
         </div>
     </div>
     
     <div class='wiki-card'>
         <div class='wiki-title'>3. VWAP (成交量加权平均价)</div>
         <div class='wiki-text'>
-            <b>原理：</b> 机构交易员的平均持仓成本线。<br>
+            <b>原理：</b> 这是机构交易员的“生命线”。它不仅仅是平均价，还考虑了成交量。<br>
             <b>用法：</b><br>
-            - 股价 > VWAP：机构处于盈利状态，市场强势（多头主导）。<br>
-            - 股价 < VWAP：机构被套或做空，市场弱势（空头主导）。
+            - 股价 > VWAP：说明今天买入的人大部分是赚钱的，市场强势，机构在护盘。<br>
+            - 股价 < VWAP：说明今天买入的人大部分被套了，市场弱势，机构在出货。
         </div>
     </div>
     
     <div class='wiki-card'>
         <div class='wiki-title'>4. 蒙特卡洛预测 (Monte Carlo)</div>
         <div class='wiki-text'>
-            <b>原理：</b> 用计算机模拟未来 30 天的 100 种可能走势。<br>
-            <b>用法：</b> 它可以告诉你“最坏的情况”大概会跌到哪里，帮助你设置止损。
+            <b>原理：</b> 计算机通过模拟未来 30 天的 100 种可能走势。<br>
+            <b>用法：</b> 它不是水晶球，不能告诉你确切价格。但它能告诉你“风险边界”。比如模拟结果显示只有 5% 的概率跌破 $100，那你就可以把止损设在 $100。
         </div>
     </div>
     
     <div class='wiki-card'>
         <div class='wiki-title'>5. 基本面六维雷达 (Fundamental Spider)</div>
         <div class='wiki-text'>
-            <b>维度解读：</b><br>
-            - <b>PE (反向)</b>：越靠外圈，估值越低（便宜）。<br>
-            - <b>Rev Growth</b>：营收增长率，越高越好。<br>
-            - <b>Short Ratio</b>：做空比例，越靠外圈做空越少（安全）。<br>
-            <b>形状：</b> 图形越饱满（面积越大），公司基本面越完美。
+            <b>原理：</b> 快速体检表。<br>
+            - <b>PE (反向)</b>：越靠外圈，估值越便宜。<br>
+            - <b>Rev Growth</b>：营收增长越快越好。<br>
+            - <b>Short Ratio</b>：做空越少越安全。<br>
+            <b>形状：</b> 图形越饱满（面积越大），公司基本面越完美，越像“六边形战士”。
+        </div>
+    </div>
+    
+    <div class='wiki-card'>
+        <div class='wiki-title'>6. 🦸‍♂️ SuperTrend (超级趋势)</div>
+        <div class='wiki-text'>
+            <b>原理：</b> 基于 ATR 波动率的趋势跟踪系统。<br>
+            <b>用法：</b> 图表上那条变色的线。<b>绿色</b>代表处于上涨趋势（持股），<b>红色</b>代表处于下跌趋势（空仓）。它是最好的<b>“移动止损线”</b>。
+        </div>
+    </div>
+    
+    <div class='wiki-card'>
+        <div class='wiki-title'>7. 🕳️ FVG (聪明钱缺口)</div>
+        <div class='wiki-text'>
+            <b>原理：</b> 机构暴力拉升或砸盘时留下的“真空地带”。<br>
+            <b>用法：</b> 图中的<b>紫色方块</b>。股价通常会像有磁铁一样，回踩这些方块去“填补缺口”。如果你错过了第一波行情，可以在 FVG 区域挂单等回调。
+        </div>
+    </div>
+    
+    <div class='wiki-card'>
+        <div class='wiki-title'>8. 📊 Z-Score (统计学乖离率)</div>
+        <div class='wiki-text'>
+            <b>原理：</b> 统计学上的“标准差”。<br>
+            <b>用法：</b> 告诉你股价偏离均线有多远。如果 Z-Score 超过 +2，说明“涨过头了”，随时可能回调；如果低于 -2，说明“跌过头了”，随时可能反弹。
+        </div>
+    </div>
+    
+    <div class='wiki-card'>
+        <div class='wiki-title'>9. 🐢 唐奇安通道 (Donchian Channels)</div>
+        <div class='wiki-text'>
+            <b>原理：</b> 海龟交易法则的核心。<br>
+            <b>用法：</b> 突破上轨（过去20天最高价）是<b>买入信号</b>；跌破下轨（过去20天最低价）是<b>卖出信号</b>。做大趋势的神器。
         </div>
     </div>
     """, unsafe_allow_html=True)
 
-# [NEW] Main App
+# ================= 5. 主APP渲染 =================
 def render_main_app():
     ticker = st.session_state.current_ticker
     with st.spinner(f"🦁 正在连接华尔街数据源: {ticker} ..."):
@@ -550,25 +608,31 @@ def render_main_app():
             fig2.update_layout(height=350, margin=dict(l=0,r=0,t=30,b=0), template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', showlegend=True, legend=dict(orientation="h", y=1.1))
             st.plotly_chart(fig2, use_container_width=True)
 
-        with st.expander("📈 核心趋势 (K线+均线+VWAP+斐波那契) [点击展开]", expanded=False):
+        with st.expander("📈 核心趋势 (K线+SuperTrend+FVG+唐奇安) [点击展开]", expanded=False):
             fig = go.Figure()
-            fig.add_trace(go.Candlestick(x=h.index, open=h['Open'], high=h['High'], low=h['Low'], close=h['Close'], name='K线'))
-            fig.add_trace(go.Scatter(x=h.index, y=h['MA20'], line=dict(color='#f59e0b', width=1), name='MA20'))
-            fig.add_trace(go.Scatter(x=h.index, y=h['MA60'], line=dict(color='#3b82f6', width=1.5), name='MA60'))
-            fig.add_trace(go.Scatter(x=h.index, y=h['MA120'], line=dict(color='#8b5cf6', width=1.5), name='MA120'))
-            # VWAP
-            fig.add_trace(go.Scatter(x=h.index, y=h['VWAP'], line=dict(color='#fcd34d', width=2, dash='dash'), name='VWAP (机构线)'))
-            # Fibonacci
-            for level, col in zip(['Fib_236','Fib_382','Fib_500','Fib_618'], ['gray','gray','white','gold']):
-                fig.add_trace(go.Scatter(x=h.index, y=h[level], mode='lines', line=dict(color=col, width=1, dash='dot'), name=f'Fib {level[-3:]}'))
             
-            td_up_mask = h['TD_UP'] > 0; td_down_mask = h['TD_DOWN'] > 0
-            if td_up_mask.any(): fig.add_trace(go.Scatter(x=h.index[td_up_mask], y=h.loc[td_up_mask, 'High'] * 1.01, mode="text", text=h.loc[td_up_mask, 'TD_UP'].astype(int), textfont=dict(color='red'), name="TD高点"))
-            if td_down_mask.any(): fig.add_trace(go.Scatter(x=h.index[td_down_mask], y=h.loc[td_down_mask, 'Low'] * 0.99, mode="text", text=h.loc[td_down_mask, 'TD_DOWN'].astype(int), textfont=dict(color='green'), name="TD低点"))
+            # K线
+            fig.add_trace(go.Candlestick(x=h.index, open=h['Open'], high=h['High'], low=h['Low'], close=h['Close'], name='K线'))
+            
+            # [NEW] SuperTrend
+            st_color = ['#22c55e' if c > l else '#ef4444' for c, l in zip(h['Close'], h['ST_Lower'])]
+            fig.add_trace(go.Scatter(x=h.index, y=h['ST_Lower'], mode='markers', marker=dict(color=st_color, size=2), name='SuperTrend'))
+            
+            # [NEW] Donchian Channels
+            fig.add_trace(go.Scatter(x=h.index, y=h['DC_Upper'], line=dict(color='rgba(255,255,255,0.3)', width=1, dash='dot'), name='唐奇安上轨'))
+            fig.add_trace(go.Scatter(x=h.index, y=h['DC_Lower'], line=dict(color='rgba(255,255,255,0.3)', width=1, dash='dot'), name='唐奇安下轨', fill='tonexty'))
+
+            # [NEW] FVG (Fair Value Gaps) - Purple Box
+            for i in range(2, len(h)):
+                if h['FVG_Bull'].iloc[i]:
+                    fig.add_shape(type="rect", x0=h.index[i-2], y0=h['Low'].iloc[i], x1=h.index[i], y1=h['High'].iloc[i-2], fillcolor="rgba(139, 92, 246, 0.3)", line_width=0)
+            
+            # VWAP
+            fig.add_trace(go.Scatter(x=h.index, y=h['VWAP'], line=dict(color='#fcd34d', width=2), name='VWAP'))
             
             fig.update_layout(height=800, xaxis_rangeslider_visible=True, margin=dict(l=0,r=0,t=10,b=0), hovermode="x unified", template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', showlegend=True, legend=dict(orientation="h", y=1.02))
             st.plotly_chart(fig, use_container_width=True)
-            st.markdown("<div class='teach-box'><b>🎓 指标教学</b><br><b>🟡 VWAP (机构线)</b>：如果 K 线在黄线之上，说明机构在买入护盘；如果在之下，说明机构在出货。</div>", unsafe_allow_html=True)
+            st.markdown("<div class='teach-box'><b>✨ 新功能教学</b><br>1. <b>SuperTrend</b>：红绿点线。绿色持股，红色持币。<br>2. <b>FVG</b>：紫色方块。那是机构留下的缺口，股价常会吸过去。<br>3. <b>唐奇安通道</b>：突破上轨追涨，跌破下轨杀跌。</div>", unsafe_allow_html=True)
             
         with st.expander("📅 历史季节性 & 蒙特卡洛预测 [点击展开]", expanded=False):
             c_seas, c_mc = st.columns(2)
@@ -581,7 +645,6 @@ def render_main_app():
                     fig_seas.update_layout(title="季节性回报", height=350, margin=dict(l=0,r=0,t=30,b=0), template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)')
                     st.plotly_chart(fig_seas, use_container_width=True)
             with c_mc:
-                # 蒙特卡洛
                 last_price = h['Close'].iloc[-1]; daily_vol = h['Close'].pct_change().std()
                 simulations = 100; days = 30; sim_df = pd.DataFrame()
                 for x in range(simulations):
@@ -594,35 +657,36 @@ def render_main_app():
                 fig_mc.update_layout(title=f"未来30天价格模拟 ({simulations}次)", height=350, template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)')
                 st.plotly_chart(fig_mc, use_container_width=True)
         
-        with st.expander("📉 进阶指标 (OBV/MACD/RSI/CMF/WR/筹码) [点击展开]", expanded=False):
+        with st.expander("📉 进阶指标 (Z-Score/CMF/WR/筹码) [点击展开]", expanded=False):
             vp_price, vp_vol = calculate_volume_profile(h.iloc[-252:])
-            fig3 = make_subplots(rows=7, cols=2, shared_xaxes=True, row_heights=[0.14]*7, column_widths=[0.85, 0.15], horizontal_spacing=0.01, vertical_spacing=0.03, specs=[[{"colspan":2}, None], [{"colspan":2}, None], [{"colspan":2}, None], [{"colspan":2}, None], [{"colspan":2}, None], [{"colspan":2}, None], [{"colspan":1}, {}]])
+            fig3 = make_subplots(rows=5, cols=2, shared_xaxes=True, row_heights=[0.2]*5, column_widths=[0.85, 0.15], horizontal_spacing=0.01, vertical_spacing=0.03, specs=[[{"colspan":2}, None], [{"colspan":2}, None], [{"colspan":2}, None], [{"colspan":2}, None], [{"colspan":1}, {}]])
             
-            fig3.add_trace(go.Scatter(x=h.index, y=h['OBV'], line=dict(color='#9ca3af', width=1), name='OBV', fill='tozeroy'), row=1, col=1)
-            colors = ['#ef4444' if v < 0 else '#22c55e' for v in h['Hist']]
-            fig3.add_trace(go.Bar(x=h.index, y=h['Hist'], marker_color=colors, name='MACD'), row=2, col=1)
-            fig3.add_trace(go.Scatter(x=h.index, y=h['MACD'], line=dict(color='#3b82f6'), name='DIF'), row=2, col=1)
-            fig3.add_trace(go.Scatter(x=h.index, y=h['Signal'], line=dict(color='#f97316'), name='DEA'), row=2, col=1)
-            fig3.add_trace(go.Scatter(x=h.index, y=h['RSI'], line=dict(color='#a855f7'), name='RSI'), row=3, col=1)
-            fig3.add_hline(y=70, line_dash='dot', row=3, col=1); fig3.add_hline(y=30, line_dash='dot', row=3, col=1)
-            fig3.add_trace(go.Scatter(x=h.index, y=h['K'], line=dict(color='#f97316', width=1), name='K'), row=4, col=1)
-            fig3.add_trace(go.Scatter(x=h.index, y=h['D'], line=dict(color='#3b82f6', width=1), name='D'), row=4, col=1)
-            fig3.add_trace(go.Scatter(x=h.index, y=h['J'], line=dict(color='#a855f7', width=1), name='J'), row=4, col=1)
-            # CMF
+            # 1. Z-Score
+            fig3.add_trace(go.Scatter(x=h.index, y=h['Z_Score'], line=dict(color='#f472b6', width=1), name='Z-Score (乖离)'), row=1, col=1)
+            fig3.add_hline(y=2, line_dash='dot', row=1, col=1); fig3.add_hline(y=-2, line_dash='dot', row=1, col=1)
+            
+            # 2. CMF
             cmf_col = ['#22c55e' if v >= 0 else '#ef4444' for v in h['CMF']]
-            fig3.add_trace(go.Bar(x=h.index, y=h['CMF'], marker_color=cmf_col, name='CMF资金'), row=5, col=1)
-            # WR
-            fig3.add_trace(go.Scatter(x=h.index, y=h['WR'], line=dict(color='#06b6d4', width=1), name='Williams %R'), row=6, col=1)
-            fig3.add_hline(y=-20, line_dash='dot', row=6, col=1); fig3.add_hline(y=-80, line_dash='dot', row=6, col=1)
+            fig3.add_trace(go.Bar(x=h.index, y=h['CMF'], marker_color=cmf_col, name='CMF资金'), row=2, col=1)
             
-            fig3.add_trace(go.Scatter(x=h.index, y=h['UPPER'], line=dict(color='#6b7280', width=1), name='Upper'), row=7, col=1)
-            fig3.add_trace(go.Scatter(x=h.index, y=h['LOWER'], line=dict(color='#6b7280', width=1), name='Lower', fill='tonexty'), row=7, col=1)
-            fig3.add_trace(go.Scatter(x=h.index, y=h['Close'], line=dict(color='#3b82f6', width=1), name='Close'), row=7, col=1)
-            fig3.add_trace(go.Bar(x=vp_vol, y=vp_price, orientation='h', marker_color='rgba(100,100,100,0.3)', name='Vol Profile'), row=7, col=2)
+            # 3. WR
+            fig3.add_trace(go.Scatter(x=h.index, y=h['WR'], line=dict(color='#06b6d4', width=1), name='Williams %R'), row=3, col=1)
+            fig3.add_hline(y=-20, line_dash='dot', row=3, col=1); fig3.add_hline(y=-80, line_dash='dot', row=3, col=1)
             
-            fig3.update_layout(height=1400, margin=dict(l=0,r=0,t=10,b=0), showlegend=True, legend=dict(orientation="h", y=1.01), template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', xaxis_rangeslider_visible=True)
+            # 4. MACD
+            colors = ['#ef4444' if v < 0 else '#22c55e' for v in h['Hist']]
+            fig3.add_trace(go.Bar(x=h.index, y=h['Hist'], marker_color=colors, name='MACD'), row=4, col=1)
+            fig3.add_trace(go.Scatter(x=h.index, y=h['MACD'], line=dict(color='#3b82f6'), name='DIF'), row=4, col=1)
+            fig3.add_trace(go.Scatter(x=h.index, y=h['Signal'], line=dict(color='#f97316'), name='DEA'), row=4, col=1)
+            
+            # 5. BOLL + Profile
+            fig3.add_trace(go.Scatter(x=h.index, y=h['UPPER'], line=dict(color='#6b7280', width=1), name='Upper'), row=5, col=1)
+            fig3.add_trace(go.Scatter(x=h.index, y=h['LOWER'], line=dict(color='#6b7280', width=1), name='Lower', fill='tonexty'), row=5, col=1)
+            fig3.add_trace(go.Scatter(x=h.index, y=h['Close'], line=dict(color='#3b82f6', width=1), name='Close'), row=5, col=1)
+            fig3.add_trace(go.Bar(x=vp_vol, y=vp_price, orientation='h', marker_color='rgba(100,100,100,0.3)', name='Vol Profile'), row=5, col=2)
+            
+            fig3.update_layout(height=1000, margin=dict(l=0,r=0,t=10,b=0), showlegend=True, legend=dict(orientation="h", y=1.01), template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', xaxis_rangeslider_visible=True)
             st.plotly_chart(fig3, use_container_width=True)
-            st.markdown("<div class='teach-box'><b>🎓 指标大师课</b><br>1. <b>CMF (资金流)</b>：绿色=主力吸筹，红色=主力派发。<br>2. <b>WR (威廉指标)</b>：> -20 超买，< -80 超卖 (比RSI更灵敏)。<br>3. <b>🐳 筹码分布</b>：最长柱子=强支撑/压力。</div>", unsafe_allow_html=True)
 
     with st.expander("🦁 市场雷达 & 基本面雷达 [点击展开]", expanded=False):
         c1, c2, c3, c4 = st.columns(4)
@@ -779,7 +843,7 @@ def render_main_app():
                 st.dataframe(fdf, use_container_width=True)
         else: st.write("无财报数据")
 
-# ================= Navigation Logic =================
+# ================= 6. 页面路由 =================
 page = st.sidebar.radio("📌 导航", ["🚀 股票分析", "📖 功能说明书"])
 
 if page == "🚀 股票分析":
@@ -801,6 +865,7 @@ if page == "🚀 股票分析":
             c = "#4ade80" if s>=60 else "#f87171"
             st.markdown(f"<div class='score-card'><div class='sc-lbl'>MORGAN SCORE</div><div class='sc-val' style='color:{c}'>{s}</div><div class='sc-lbl' style='color:#9CA3AF'>{n}</div></div>", unsafe_allow_html=True)
         
+        # 实时数据
         ticker = st.session_state.current_ticker
         with st.spinner(f"🦁 正在连接华尔街数据源: {ticker} ..."):
             data = fetch_stock_full_data(ticker)
@@ -835,6 +900,19 @@ if page == "🚀 股票分析":
                 </div>
                 """, unsafe_allow_html=True)
                 
+                # [NEW] 凯利公式计算器
+                with st.expander("🧮 凯利仓位计算器"):
+                    win_prob = st.slider("胜率 (%)", 0, 100, 50)
+                    risk_reward = st.slider("盈亏比 (1:x)", 1.0, 5.0, 2.0)
+                    # Kelly = P - (1-P)/R
+                    P = win_prob / 100
+                    R = risk_reward
+                    kelly = P - (1-P)/R
+                    if kelly > 0:
+                        st.markdown(f"建议仓位: <b style='color:#4ade80'>{kelly:.1%}</b>", unsafe_allow_html=True)
+                    else:
+                        st.markdown(f"建议仓位: <b style='color:#f87171'>不参与 (0%)</b>", unsafe_allow_html=True)
+
             rel_tickers = fetch_related_tickers(ticker, i)
             if rel_tickers:
                 st.markdown("---")
