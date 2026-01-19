@@ -1,12 +1,12 @@
 import streamlit as st
 import os
 
-# ================= 0. 铁律配置 (V81: 钛合金防爆 + 蒙特卡洛增强) =================
+# ================= 0. 铁律配置 (V82: 价值投资研报 + 磐石修复) =================
 for key in ['HTTP_PROXY', 'HTTPS_PROXY', 'http_proxy', 'https_proxy']:
     if key in os.environ:
         del os.environ[key]
 
-st.set_page_config(page_title="摩根·V1 (Ultimate)", layout="wide", page_icon="🦁")
+st.set_page_config(page_title="摩根·V1 (Value)", layout="wide", page_icon="🦁")
 
 import yfinance as yf
 import pandas as pd
@@ -95,12 +95,10 @@ st.markdown("""
     .thesis-bull { background: rgba(6, 78, 59, 0.8); border: 1px solid #34d399; color: #fff; }
     .thesis-bear { background: rgba(127, 29, 29, 0.8); border: 1px solid #f87171; color: #fff; }
     
-    /* 说明书样式 */
-    .wiki-card { background: #1A1A1A; border: 1px solid #333; border-radius: 8px; padding: 20px; margin-bottom: 20px; }
-    .wiki-title { font-size: 20px; font-weight: bold; color: #FF9F1C; margin-bottom: 15px; border-bottom: 1px solid #444; padding-bottom: 5px; }
-    .wiki-sub { font-size: 16px; font-weight: bold; color: #4ade80; margin-top: 10px; margin-bottom: 5px; }
-    .wiki-text { font-size: 14px; color: #E5E7EB; line-height: 1.8; margin-bottom: 10px; }
-    .wiki-tag { background: #374151; color: #fff; padding: 2px 6px; border-radius: 4px; font-size: 12px; margin-right: 5px; border: 1px solid #555; }
+    /* 研报样式 */
+    .report-title { font-size: 22px; font-weight: 900; color: #FF9F1C; margin-bottom: 10px; border-left: 5px solid #FF9F1C; padding-left: 10px; }
+    .report-text { font-size: 15px; line-height: 1.8; color: #E5E7EB; margin-bottom: 20px; background: #1A1A1A; padding: 15px; border-radius: 8px; }
+    .guru-check { display: flex; align-items: center; margin-bottom: 8px; padding: 8px; background: #262626; border-radius: 6px; }
     
     header {visibility: hidden;}
 </style>
@@ -159,7 +157,7 @@ def fetch_stock_full_data(ticker):
         if h.empty: raise Exception("Yahoo无数据")
         
         # --- [NEW] 黑科技指标计算 ---
-        # 1. SuperTrend (超级趋势)
+        # 1. SuperTrend
         h['TR'] = np.maximum(h['High'] - h['Low'], np.abs(h['High'] - h['Close'].shift(1)))
         h['ATR'] = h['TR'].rolling(10).mean()
         multiplier = 3.0
@@ -167,16 +165,16 @@ def fetch_stock_full_data(ticker):
         h['ST_Upper'] = hl2 + (multiplier * h['ATR'])
         h['ST_Lower'] = hl2 - (multiplier * h['ATR'])
         
-        # 2. Z-Score (乖离率)
+        # 2. Z-Score
         h['MA20'] = h['Close'].rolling(20).mean()
         h['STD20'] = h['Close'].rolling(20).std()
         h['Z_Score'] = (h['Close'] - h['MA20']) / h['STD20']
         
-        # 3. Donchian Channels (唐奇安通道)
+        # 3. Donchian
         h['DC_Upper'] = h['High'].rolling(20).max()
         h['DC_Lower'] = h['Low'].rolling(20).min()
         
-        # 4. FVG (Fair Value Gap)
+        # 4. FVG
         h['FVG_Bull'] = (h['Low'] > h['High'].shift(2))
         h['FVG_Bear'] = (h['High'] < h['Low'].shift(2))
 
@@ -271,7 +269,7 @@ def fetch_stock_full_data(ticker):
                 opt_data = {"date": near_date, "calls": opt.calls, "puts": opt.puts}
         except: pass
 
-        # [FIX] 钛合金防爆门：强制保证 info 是字典
+        # [FIX V82] 钛合金防爆门：强制保证 info 是字典
         safe_info = s.info if s.info is not None else {}
         
         return {
@@ -364,7 +362,8 @@ def calculate_vision_analysis(df, info):
 
     sups = filter_pts([p for p in pts if p['t']=="sup"], reverse=True)
     ress = filter_pts([p for p in pts if p['t']=="res"], reverse=False)
-    # [FIX] 安全获取 info 字段
+    
+    # [FIX] 安全字典
     if not isinstance(info, dict): info = {}
     eps_fwd = info.get('forwardEps'); val_data = f"{eps_fwd*25:.0f}-{eps_fwd*35:.0f} (25x-35x)" if eps_fwd else "N/A"
     
@@ -582,7 +581,11 @@ def render_main_app():
     c_main, c_fac = st.columns([2, 3])
     with c_main:
         st.metric(f"{ticker} 实时", f"${rt_price:.2f}", f"{chg:.2%}")
-        st.caption(f"{i.get('longName', ticker)} | {i.get('industry', 'Unknown')}")
+        # [FIX V82] 安全获取字符串
+        safe_i = i if isinstance(i, dict) else {}
+        name = safe_i.get('longName', ticker)
+        ind = safe_i.get('industry', 'Unknown')
+        st.caption(f"{name} | {ind}")
         st.markdown("<div class='social-box'>", unsafe_allow_html=True)
         c_btn = st.columns(4)
         c_btn[0].link_button("🔥 谷歌搜", f"https://www.google.com/search?q=why+is+{ticker}+stock+moving+today")
@@ -704,7 +707,7 @@ def render_main_app():
 
     with st.expander("🦁 市场雷达 & 基本面雷达 [点击展开]", expanded=False):
         c1, c2, c3, c4 = st.columns(4)
-        # [FIX] 双重熔断：先确保 i 是字典，再安全 get
+        # [FIX V82] 安全获取字典值
         safe_i = i if isinstance(i, dict) else {}
         c1.metric("做空比例", fmt_pct(safe_i.get('shortPercentOfFloat')))
         c2.metric("Beta", fmt_num(safe_i.get('beta')))
@@ -744,7 +747,7 @@ def render_main_app():
             with c_bull: st.markdown(f"<div class='thesis-col thesis-bull'><b>🚀 多头逻辑 (Bull Case)</b><br>{'<br>'.join([f'✅ {b}' for b in bulls])}</div>", unsafe_allow_html=True)
             with c_bear: st.markdown(f"<div class='thesis-col thesis-bear'><b>🔻 空头逻辑 (Bear Case)</b><br>{'<br>'.join([f'⚠️ {b}' for b in bears])}</div>", unsafe_allow_html=True)
 
-    tabs = st.tabs(["📰 资讯/评级", "👥 筹码/内部人", "💰 估值", "🔮 宏观与期权", "📊 财报"])
+    tabs = st.tabs(["📰 资讯/评级", "👥 筹码/内部人", "💰 估值", "🔮 宏观与期权", "📊 财报", "🎓 深度研报"])
 
     with tabs[0]:
         c_n, c_r = st.columns(2)
@@ -774,7 +777,7 @@ def render_main_app():
                 st.dataframe(idf, use_container_width=True)
         with c_inr:
             st.subheader("🕴️ 内部交易 (气泡图)")
-            # [FIX] 数据熔断，防止空图
+            # [FIX] 数据熔断
             if data['insider'] is not None and not data['insider'].empty:
                 ins_df = data['insider'].copy()
                 try:
@@ -792,14 +795,16 @@ def render_main_app():
 
     with tabs[2]:
         st.subheader("⚖️ 格雷厄姆合理价")
-        eps = i.get('trailingEps', 0); bvps = i.get('bookValue', 0)
+        # [FIX V82] 安全获取
+        safe_i = i if isinstance(i, dict) else {}
+        eps = safe_i.get('trailingEps', 0); bvps = safe_i.get('bookValue', 0)
         if eps > 0 and bvps > 0:
             graham = (22.5 * eps * bvps) ** 0.5
             st.metric("Graham Number", f"${graham:.2f}", f"{(graham-rt_price)/rt_price:.1%} Upside")
         else: st.error("数据不足")
         st.markdown("---")
         st.subheader("💰 DCF 模型")
-        peg = i.get('pegRatio')
+        peg = safe_i.get('pegRatio')
         if peg:
             peg_color = "#4ade80" if peg < 1 else "#fbbf24" if peg < 2 else "#f87171"
             st.caption(f"PEG: : {peg} <span style='color:{peg_color}'>●</span> ( <1 低估, >2 高估 )", unsafe_allow_html=True)
@@ -857,6 +862,65 @@ def render_main_app():
             with st.expander("查看详细报表"):
                 st.dataframe(fdf, use_container_width=True)
         else: st.write("无财报数据")
+        
+    with tabs[5]: # [NEW V82] 价值投资研报
+        st.header(f"🎓 {ticker} 价值投资深度研报")
+        
+        # 1. Business Model
+        st.markdown("<div class='report-title'>1. 🏢 商业模式 (Business Model)</div>", unsafe_allow_html=True)
+        safe_i = i if isinstance(i, dict) else {}
+        summary = safe_i.get('longBusinessSummary', '暂无描述')
+        st.markdown(f"<div class='report-text'>{summary}</div>", unsafe_allow_html=True)
+        
+        # 2. Moat Analysis
+        st.markdown("<div class='report-title'>2. 🏰 护城河分析 (Moat)</div>", unsafe_allow_html=True)
+        gross_margin = safe_i.get('grossMargins', 0)
+        roe = safe_i.get('returnOnEquity', 0)
+        
+        gm_color = "#4ade80" if gross_margin > 0.4 else "#f87171"
+        roe_color = "#4ade80" if roe > 0.15 else "#f87171"
+        
+        c_m1, c_m2 = st.columns(2)
+        c_m1.markdown(f"<div class='score-card'><div class='sc-lbl'>毛利率 (Gross Margin)</div><div class='sc-val' style='color:{gm_color}'>{fmt_pct(gross_margin)}</div><div class='sc-lbl'>巴菲特标准: >40%</div></div>", unsafe_allow_html=True)
+        c_m2.markdown(f"<div class='score-card'><div class='sc-lbl'>ROE (净资产收益率)</div><div class='sc-val' style='color:{roe_color}'>{fmt_pct(roe)}</div><div class='sc-lbl'>巴菲特标准: >15%</div></div>", unsafe_allow_html=True)
+        
+        # 3. Guru Checklist
+        st.markdown("<div class='report-title'>3. 🧘‍♂️ 大师检查清单 (Guru Checklist)</div>", unsafe_allow_html=True)
+        
+        # Lynch
+        peg = safe_i.get('pegRatio')
+        lynch_pass = peg is not None and peg < 1.0
+        st.markdown(f"""
+        <div class='guru-check'>
+            <span style='font-size:20px; margin-right:10px'>{'✅' if lynch_pass else '❌'}</span>
+            <div>
+                <b>彼得·林奇 (Peter Lynch) 成长股法则</b><br>
+                <span style='color:#9ca3af; font-size:13px'>PEG Ratio < 1.0 (当前: {peg})</span>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        # Graham
+        graham_pass = False
+        if eps > 0 and bvps > 0:
+            graham_price = (22.5 * eps * bvps) ** 0.5
+            graham_pass = rt_price < graham_price
+            st.markdown(f"""
+            <div class='guru-check'>
+                <span style='font-size:20px; margin-right:10px'>{'✅' if graham_pass else '❌'}</span>
+                <div>
+                    <b>格雷厄姆 (Ben Graham) 安全边际法则</b><br>
+                    <span style='color:#9ca3af; font-size:13px'>股价 < 格雷厄姆数字 (${graham_price:.2f})</span>
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+            
+        # 4. Due Diligence Links
+        st.markdown("<div class='report-title'>4. 📞 尽职调查通道 (Due Diligence)</div>", unsafe_allow_html=True)
+        dd_c1, dd_c2, dd_c3 = st.columns(3)
+        dd_c1.link_button("📄 SEC 10-K 年报", f"https://www.sec.gov/cgi-bin/browse-edgar?CIK={ticker}")
+        dd_c2.link_button("🗣️ 电话会议 (Earnings Call)", f"https://www.google.com/search?q={ticker}+earnings+call+transcript")
+        dd_c3.link_button("🌐 投资者关系 (IR)", f"https://www.google.com/search?q={ticker}+investor+relations")
 
 # ================= 6. 页面路由 =================
 page = st.sidebar.radio("📌 导航", ["🚀 股票分析", "📖 功能说明书"])
