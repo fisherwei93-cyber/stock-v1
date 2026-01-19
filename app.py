@@ -10,8 +10,8 @@ import re
 import sys
 import time
 
-# ================= 0. 铁律配置 (移除代理，云端直连) =================
-# [FIX] V71.4: 删除了本地代理配置，解决 Cloud 连接拒绝问题
+# ================= 0. 铁律配置 (V72: 彻底移除代理，云端裸连) =================
+# [注意] 删除了所有 PROXY 设置，确保云端不报错
 st.set_page_config(page_title="摩根·V1 (Pro)", layout="wide", page_icon="🦁")
 
 # 2. 样式死锁
@@ -174,7 +174,7 @@ def fetch_stock_full_data(ticker):
             "error": None
         }
     except Exception as e:
-        # [FIX] 即使失败，也要返回完整的 Key 结构，防止 KeyError
+        # [FIX] 安全返回，防止 KeyError
         dates = pd.date_range(end=datetime.datetime.today(), periods=50)
         df = pd.DataFrame({'Open':100,'Close':100,'High':100,'Low':100,'Volume':0}, index=dates)
         return {
@@ -343,9 +343,7 @@ def calculate_volume_profile(df, bins=50):
 def generate_bull_bear_thesis(df, info):
     # [FIX] 空数据熔断保护
     if df.empty: return [], []
-    
     bulls = []; bears = []
-    # 再次检查列是否存在，防止KeyError
     if 'Close' not in df.columns: return [], []
     
     curr = df['Close'].iloc[-1]
@@ -382,7 +380,6 @@ if data['error']:
 else:
     h, i = data['history'], data['info']
 
-# 预计算
 if not h.empty:
     rt_price = data['rt_price']
     prev = h['Close'].iloc[-1]
@@ -392,7 +389,6 @@ if not h.empty:
 else:
     rt_price, chg, l_an = 0, 0, None
 
-# 渲染侧边栏
 with st.sidebar:
     st.title("🦁 摩根·V1 (Pro)")
     
@@ -419,11 +415,11 @@ with st.sidebar:
         c1.metric("市值", fmt_big(i.get('marketCap')))
         c2.metric("Beta", fmt_num(i.get('beta')))
         
-        # [FIX] 只有 h 不为空才渲染技术信号
         if not h.empty:
             signals = []
             curr = h['Close'].iloc[-1]
             ma20 = h['MA20'].iloc[-1]; ma60 = h['MA60'].iloc[-1]
+            
             if curr > ma20 and ma20 > ma60: signals.append("🐂 多头排列")
             if h['Whale'].iloc[-1]: signals.append("🔥 放量异动")
             if h['RSI'].iloc[-1] > 70: signals.append("⚠️ RSI超买")
@@ -488,7 +484,6 @@ with st.sidebar:
         if cols[0].button("分析", key=f"a_{sym}"): st.session_state.current_ticker = sym; st.rerun()
         if cols[1].button("删", key=f"d_{sym}"): st.session_state.watchlist.remove(sym); st.rerun()
 
-# 主区域渲染 (只在数据存在时)
 c_main, c_fac = st.columns([2, 3])
 with c_main:
     st.metric(f"{ticker} 实时", f"${rt_price:.2f}", f"{chg:.2%}")
@@ -562,7 +557,6 @@ if not h.empty:
         fig3.add_trace(go.Scatter(x=h.index, y=h['UPPER'], line=dict(color='gray', width=1), name='Upper'), row=5, col=1)
         fig3.add_trace(go.Scatter(x=h.index, y=h['LOWER'], line=dict(color='gray', width=1), name='Lower', fill='tonexty'), row=5, col=1)
         fig3.add_trace(go.Scatter(x=h.index, y=h['Close'], line=dict(color='blue', width=1), name='Close'), row=5, col=1)
-        # 鲸鱼雷达
         colors_vol = ['#8b5cf6' if w else 'rgba(0,0,0,0.3)' for w in h['Whale'].iloc[-252:]]
         fig3.add_trace(go.Bar(x=vp_vol, y=vp_price, orientation='h', marker_color='rgba(0,0,0,0.3)', name='Vol Profile'), row=5, col=2)
         fig3.update_layout(height=1000, margin=dict(l=0,r=0,t=10,b=0), showlegend=False)
@@ -577,7 +571,6 @@ with st.expander("🦁 市场雷达 (做空/分析师/分红) [点击展开]", e
     c4.metric("股息率", fmt_pct(i.get('dividendYield')))
     st.markdown("<div class='note-box'><b>📖 雷达读数详解：</b><br>🔴 <b>做空比例</b>: >20% 极高风险(但也可能逼空)。<br>🎢 <b>Beta</b>: >1.5 高波动; <0.8 避险。<br>⏳ <b>回补天数</b>: >5天 空头难跑，利多。<br></div>", unsafe_allow_html=True)
 
-# [FIX] 只有 h 不为空才执行多空博弈
 if not h.empty:
     bulls, bears = generate_bull_bear_thesis(h, i)
     with st.expander("🐂 vs 🐻 智能多空博弈 (AI Thesis) [点击展开]", expanded=True):
