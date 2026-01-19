@@ -10,8 +10,7 @@ import re
 import sys
 import time
 
-# ================= 0. 铁律配置 (V72: 彻底移除代理，云端裸连) =================
-# [注意] 删除了所有 PROXY 设置，确保云端不报错
+# ================= 0. 铁律配置 (V73: 纯净版，无任何代理设置) =================
 st.set_page_config(page_title="摩根·V1 (Pro)", layout="wide", page_icon="🦁")
 
 # 2. 样式死锁
@@ -87,6 +86,7 @@ if 'current_ticker' not in st.session_state: st.session_state.current_ticker = '
 @st.cache_data(ttl=300)
 def fetch_stock_full_data(ticker):
     try:
+        # [关键修复] 移除所有代理设置，强制直连
         s = yf.Ticker(ticker)
         try: rt_price = s.fast_info.last_price
         except: rt_price = s.info.get('currentPrice', 0)
@@ -380,6 +380,7 @@ if data['error']:
 else:
     h, i = data['history'], data['info']
 
+# 预计算
 if not h.empty:
     rt_price = data['rt_price']
     prev = h['Close'].iloc[-1]
@@ -389,6 +390,7 @@ if not h.empty:
 else:
     rt_price, chg, l_an = 0, 0, None
 
+# 渲染侧边栏
 with st.sidebar:
     st.title("🦁 摩根·V1 (Pro)")
     
@@ -415,11 +417,11 @@ with st.sidebar:
         c1.metric("市值", fmt_big(i.get('marketCap')))
         c2.metric("Beta", fmt_num(i.get('beta')))
         
+        # [FIX] 只有 h 不为空才渲染技术信号
         if not h.empty:
             signals = []
             curr = h['Close'].iloc[-1]
             ma20 = h['MA20'].iloc[-1]; ma60 = h['MA60'].iloc[-1]
-            
             if curr > ma20 and ma20 > ma60: signals.append("🐂 多头排列")
             if h['Whale'].iloc[-1]: signals.append("🔥 放量异动")
             if h['RSI'].iloc[-1] > 70: signals.append("⚠️ RSI超买")
