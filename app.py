@@ -10,66 +10,40 @@ import re
 import sys
 import time
 
-# ================= 0. 铁律配置 (版本1 基石) =================
-# 这里的代理设置在本地运行有效，部署到云端会自动忽略
+# ================= 0. 铁律配置 (版本1 基准) =================
 PROXY_URL = "http://127.0.0.1:8080"
-if os.environ.get("STREAMLIT_SERVER_PORT"): # 简单判断是否在云端
+if os.environ.get("STREAMLIT_SERVER_PORT"):
     pass
 else:
     os.environ["HTTP_PROXY"] = PROXY_URL
     os.environ["HTTPS_PROXY"] = PROXY_URL
 
-st.set_page_config(page_title="摩根·V1 (Pro)", layout="wide", page_icon="🦁")
+st.set_page_config(page_title="摩根·V1 (修复版)", layout="wide", page_icon="🦁")
 
 # 2. 样式死锁
 st.markdown("""
 <style>
     .stApp { background-color: #F0F2F6; }
-    
-    /* 视野黄框 */
-    .l-box {
-        background-color: #FF9F1C;
-        color: #000000;
-        padding: 15px;
-        border-radius: 8px;
-        box-shadow: 0 4px 10px rgba(0,0,0,0.1);
-        margin-bottom: 20px;
-        font-family: 'Segoe UI', sans-serif;
-        border: 1px solid #e68a00;
-    }
+    .l-box { background-color: #FF9F1C; color: #000; padding: 15px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); margin-bottom: 20px; border: 1px solid #e68a00; font-family: 'Segoe UI', sans-serif; }
     .l-title { font-size: 18px; font-weight: 900; border-bottom: 2px solid #000; padding-bottom: 8px; margin-bottom: 12px; }
     .l-sub { font-size: 15px; font-weight: 800; text-decoration: underline; margin-top: 15px; margin-bottom: 8px; }
     .l-item { display: flex; justify-content: space-between; align-items: center; font-size: 14px; font-weight: 600; border-bottom: 1px dashed rgba(0,0,0,0.2); padding: 4px 0; }
-    
-    /* 标签系统 */
     .tg-s { background: rgba(255,255,255,0.5); padding: 1px 5px; border-radius: 4px; font-size: 11px; margin-left: 6px; color: #333; }
     .tg-m { background: #fef08a; padding: 1px 5px; border-radius: 4px; font-size: 11px; margin-left: 6px; color: #854d0e; border: 1px solid #eab308; }
     .tg-h { background: #000; color: #FF9F1C; padding: 1px 6px; border-radius: 4px; font-size: 11px; margin-left: 6px; font-weight: 800; }
-    
-    /* 评分卡 */
     .score-card { background: white; padding: 15px; border-radius: 10px; text-align: center; border: 2px solid #e2e8f0; margin-bottom: 15px; }
     .sc-val { font-size: 42px; font-weight: 900; color: #2563EB; line-height: 1; }
     .sc-lbl { font-size: 12px; color: #64748b; font-weight: bold; }
-    
-    /* 自选股 & 关联股 */
     .wl-row { background: white; padding: 8px 10px; margin-bottom: 5px; border-radius: 4px; border-left: 4px solid #ddd; cursor: pointer; display: flex; justify-content: space-between; align-items: center; }
     .wl-row:hover { border-left-color: #2563EB; background: #eef2ff; }
-    .rel-btn { width: 100%; text-align: left; padding: 5px; margin: 2px 0; border: 1px solid #eee; border-radius: 4px; background: white; cursor: pointer; }
-    .rel-btn:hover { background: #f0f9ff; border-color: #3b82f6; }
-    
-    /* 社交按钮 */
     .social-box { display: flex; gap: 10px; margin-top: 10px; }
-    
-    /* 信号/风控/教学 */
     .sig-box { background: #f0fdf4; border: 1px solid #bbf7d0; padding: 10px; border-radius: 6px; margin-top: 10px; font-size: 13px; color: #166534; }
     .risk-box { background: #fff1f2; border: 1px solid #fecaca; padding: 10px; border-radius: 6px; margin-top: 10px; font-size: 13px; color: #9f1239; }
     .note-box { background: #eef2ff; border-left: 4px solid #6366f1; padding: 10px; font-size: 12px; color: #4338ca; margin-top: 5px; border-radius: 4px; line-height: 1.6; }
     .teach-box { background: #fffbeb; border-left: 4px solid #f59e0b; padding: 10px; font-size: 12px; color: #92400e; margin-top: 10px; border-radius: 4px; }
-    
     .thesis-col { flex: 1; padding: 10px; border-radius: 6px; font-size: 13px; margin-top:5px; }
     .thesis-bull { background: #f0fdf4; border: 1px solid #86efac; color: #166534; }
     .thesis-bear { background: #fef2f2; border: 1px solid #fca5a5; color: #991b1b; }
-    
     header {visibility: hidden;}
 </style>
 """, unsafe_allow_html=True)
@@ -114,7 +88,7 @@ except: HAS_YOUTUBE = False
 if 'watchlist' not in st.session_state: st.session_state.watchlist = ['TSLA', 'NVDA', 'AAPL', 'AMD', 'PLTR']
 if 'current_ticker' not in st.session_state: st.session_state.current_ticker = 'TSLA'
 
-# ================= 2. 数据引擎 (优化缓存) =================
+# ================= 2. 数据引擎 =================
 
 @st.cache_data(ttl=300)
 def fetch_stock_full_data(ticker):
@@ -126,29 +100,28 @@ def fetch_stock_full_data(ticker):
         h = s.history(period="5y") 
         if h.empty: raise Exception("Yahoo无数据")
         
-        # --- 指标计算 ---
-        # MACD
+        # 指标计算
         exp12 = h['Close'].ewm(span=12, adjust=False).mean()
         exp26 = h['Close'].ewm(span=26, adjust=False).mean()
         h['MACD'] = exp12 - exp26
         h['Signal'] = h['MACD'].ewm(span=9, adjust=False).mean()
         h['Hist'] = h['MACD'] - h['Signal']
-        # RSI
+        
         delta = h['Close'].diff()
         gain = (delta.where(delta > 0, 0)).rolling(14).mean()
         loss = (-delta.where(delta < 0, 0)).rolling(14).mean()
         rs = gain / loss
         h['RSI'] = 100 - (100 / (1 + rs))
-        # KDJ
+        
         low_min = h['Low'].rolling(9).min()
         high_max = h['High'].rolling(9).max()
         h['RSV'] = (h['Close'] - low_min) / (high_max - low_min) * 100
         h['K'] = h['RSV'].ewm(com=2).mean()
         h['D'] = h['K'].ewm(com=2).mean()
         h['J'] = 3 * h['K'] - 2 * h['D']
-        # OBV
+        
         h['OBV'] = (np.sign(h['Close'].diff()) * h['Volume']).fillna(0).cumsum()
-        # MA & BOLL & ATR
+        
         h['TR'] = np.maximum(h['High'] - h['Low'], np.abs(h['High'] - h['Close'].shift(1)))
         h['ATR'] = h['TR'].rolling(14).mean()
         h['MA20'] = h['Close'].rolling(20).mean()
@@ -159,11 +132,12 @@ def fetch_stock_full_data(ticker):
         h['STD20'] = h['Close'].rolling(20).std()
         h['UPPER'] = h['MA20'] + 2*h['STD20']
         h['LOWER'] = h['MA20'] - 2*h['STD20']
-        # Drawdown & Whale
+        
         h['Peak'] = h['Close'].cummax()
         h['Drawdown'] = (h['Close'] - h['Peak']) / h['Peak']
         h['Vol_MA20'] = h['Volume'].rolling(20).mean()
         h['Whale'] = h['Volume'] > 2.0 * h['Vol_MA20']
+
         # TD 9
         h['TD'] = 0; h = h.copy(); c = h['Close'].values
         td_up = np.zeros(len(c)); td_down = np.zeros(len(c))
@@ -218,9 +192,8 @@ def fetch_macro_data():
         return data
     except: return None
 
-@st.cache_data(ttl=3600)
+@st.cache_data(ttl=60)
 def fetch_related_tickers(ticker, info):
-    # 手动维护的热门关联库，比自动获取更准
     relations = {
         "NVDA": ["AMD", "TSM", "SMH", "ARM", "INTC"], 
         "TSLA": ["NIO", "XPEV", "LCID", "RIVN", "BYDDF"],
@@ -231,7 +204,6 @@ def fetch_related_tickers(ticker, info):
         "META": ["GOOG", "SNAP", "PINS", "TTD"], 
         "AMZN": ["BABA", "WMT", "EBAY", "SHOP"]
     }
-    # 如果不在库里，尝试返回同行业的头
     return relations.get(ticker, [])
 
 @st.cache_data(ttl=60)
@@ -255,10 +227,9 @@ def calculate_vision_analysis(df, info):
     ma60 = df['Close'].rolling(60).mean().iloc[-1]
     ma120 = df['Close'].rolling(120).mean().iloc[-1]
     ma200 = df['Close'].rolling(200).mean().iloc[-1]
-    
-    high_20 = df['High'].tail(20).max(); low_20 = df['Low'].tail(20).min()
     high_60 = df['High'].tail(60).max(); low_60 = df['Low'].tail(60).min()
     high_52w = df['High'].tail(250).max(); low_52w = df['Low'].tail(250).min()
+    high_20 = df['High'].tail(20).max()
     
     pts = []
     if curr > ma20: pts.append({"t":"sup", "l":"小", "v":ma20, "d":"MA20/月线"})
@@ -371,28 +342,38 @@ def calculate_volume_profile(df, bins=50):
     return hist[1][:-1], hist[0]
 
 def generate_bull_bear_thesis(df, info):
+    # [FIX] 空数据熔断保护
+    if df.empty: return [], []
+    
     bulls = []; bears = []
+    # 再次检查列是否存在，防止KeyError
+    if 'Close' not in df.columns: return [], []
+    
     curr = df['Close'].iloc[-1]
     ma50 = df['MA50'].iloc[-1]; ma200 = df['MA200'].iloc[-1]; rsi = df['RSI'].iloc[-1]
+    
     if curr > ma200: bulls.append("股价站上年线 (长期牛市)")
     else: bears.append("股价跌破年线 (长期熊市)")
     if ma50 > ma200: bulls.append("均线金叉 (多头排列)")
     if rsi < 30: bulls.append("RSI超卖 (反弹预期)")
     if rsi > 70: bears.append("RSI超买 (回调风险)")
-    peg = info.get('pegRatio'); short = info.get('shortPercentOfFloat', 0)
+    
+    peg = info.get('pegRatio')
+    short = info.get('shortPercentOfFloat', 0)
+    
     if peg and peg < 1.0: bulls.append(f"PEG低估 ({peg})")
     if peg and peg > 2.5: bears.append(f"PEG高估 ({peg})")
-    if short > 0.2: bulls.append("逼空潜力大 (Short Squeeze)")
-    if short > 0.15: bears.append("做空拥挤 (机构看空)")
+    if short and short > 0.2: bulls.append("逼空潜力大 (Short Squeeze)")
+    if short and short > 0.15: bears.append("做空拥挤 (机构看空)")
+    
     while len(bulls) < 3: bulls.append("暂无明显多头信号")
     while len(bears) < 3: bears.append("暂无明显空头信号")
     return bulls[:3], bears[:3]
 
-# ================= 3. 主程序逻辑 (V1.1) =================
+# ================= 3. 主程序逻辑 =================
 
 ticker = st.session_state.current_ticker
 
-# [SPEED] 提前获取，且加 Loading 动画
 with st.spinner(f"🦁 正在连接华尔街数据源: {ticker} ..."):
     data = fetch_stock_full_data(ticker)
 
@@ -412,9 +393,9 @@ if not h.empty:
 else:
     rt_price, chg, l_an = 0, 0, None
 
-# 渲染侧边栏 (使用最新鲜的数据)
+# 渲染侧边栏
 with st.sidebar:
-    st.title("🦁 摩根·V1 (Pro)")
+    st.title("🦁 摩根·V1 (修复版)")
     
     with st.expander("📺 视频分析 (YouTube)", expanded=True):
         yt_url = st.text_input("视频链接", placeholder="粘贴URL...")
@@ -439,14 +420,13 @@ with st.sidebar:
         c1.metric("市值", fmt_big(i.get('marketCap')))
         c2.metric("Beta", fmt_num(i.get('beta')))
         
+        # [FIX] 只有 h 不为空才渲染技术信号
         if not h.empty:
             signals = []
             curr = h['Close'].iloc[-1]
             ma20 = h['MA20'].iloc[-1]; ma60 = h['MA60'].iloc[-1]
-            vol_curr = h['Volume'].iloc[-1]; vol_avg = h['Volume'].tail(10).mean()
-            
             if curr > ma20 and ma20 > ma60: signals.append("🐂 多头排列")
-            if vol_curr > 1.8 * vol_avg: signals.append("🔥 放量异动")
+            if h['Whale'].iloc[-1]: signals.append("🔥 放量异动")
             if h['RSI'].iloc[-1] > 70: signals.append("⚠️ RSI超买")
             if curr > h['UPPER'].iloc[-1]: signals.append("🚀 突破布林")
             if h['TD_UP'].iloc[-1] == 9: signals.append("🛑 神奇九转(高9)")
@@ -479,7 +459,6 @@ with st.sidebar:
             c3, c4 = st.columns(2)
             c3.caption(f"低: ${tgt_low}"); c4.caption(f"高: ${tgt_high}")
             
-        # [INTERACTION] 关联资产点击跳转
         rel_tickers = fetch_related_tickers(ticker, i)
         if rel_tickers:
             st.markdown("---")
@@ -510,6 +489,7 @@ with st.sidebar:
         if cols[0].button("分析", key=f"a_{sym}"): st.session_state.current_ticker = sym; st.rerun()
         if cols[1].button("删", key=f"d_{sym}"): st.session_state.watchlist.remove(sym); st.rerun()
 
+# 主区域渲染 (只在数据存在时)
 c_main, c_fac = st.columns([2, 3])
 with c_main:
     st.metric(f"{ticker} 实时", f"${rt_price:.2f}", f"{chg:.2%}")
@@ -583,6 +563,8 @@ if not h.empty:
         fig3.add_trace(go.Scatter(x=h.index, y=h['UPPER'], line=dict(color='gray', width=1), name='Upper'), row=5, col=1)
         fig3.add_trace(go.Scatter(x=h.index, y=h['LOWER'], line=dict(color='gray', width=1), name='Lower', fill='tonexty'), row=5, col=1)
         fig3.add_trace(go.Scatter(x=h.index, y=h['Close'], line=dict(color='blue', width=1), name='Close'), row=5, col=1)
+        # 鲸鱼雷达
+        colors_vol = ['#8b5cf6' if w else 'rgba(0,0,0,0.3)' for w in h['Whale'].iloc[-252:]]
         fig3.add_trace(go.Bar(x=vp_vol, y=vp_price, orientation='h', marker_color='rgba(0,0,0,0.3)', name='Vol Profile'), row=5, col=2)
         fig3.update_layout(height=1000, margin=dict(l=0,r=0,t=10,b=0), showlegend=False)
         st.plotly_chart(fig3, use_container_width=True)
@@ -596,11 +578,13 @@ with st.expander("🦁 市场雷达 (做空/分析师/分红) [点击展开]", e
     c4.metric("股息率", fmt_pct(i.get('dividendYield')))
     st.markdown("<div class='note-box'><b>📖 雷达读数详解：</b><br>🔴 <b>做空比例</b>: >20% 极高风险(但也可能逼空)。<br>🎢 <b>Beta</b>: >1.5 高波动; <0.8 避险。<br>⏳ <b>回补天数</b>: >5天 空头难跑，利多。<br></div>", unsafe_allow_html=True)
 
-bulls, bears = generate_bull_bear_thesis(h, i)
-with st.expander("🐂 vs 🐻 智能多空博弈 (AI Thesis) [点击展开]", expanded=True):
-    c_bull, c_bear = st.columns(2)
-    with c_bull: st.markdown(f"<div class='thesis-col thesis-bull'><b>🚀 多头逻辑 (Bull Case)</b><br>{'<br>'.join([f'✅ {b}' for b in bulls])}</div>", unsafe_allow_html=True)
-    with c_bear: st.markdown(f"<div class='thesis-col thesis-bear'><b>🔻 空头逻辑 (Bear Case)</b><br>{'<br>'.join([f'⚠️ {b}' for b in bears])}</div>", unsafe_allow_html=True)
+# [FIX] 只有 h 不为空才执行多空博弈
+if not h.empty:
+    bulls, bears = generate_bull_bear_thesis(h, i)
+    with st.expander("🐂 vs 🐻 智能多空博弈 (AI Thesis) [点击展开]", expanded=True):
+        c_bull, c_bear = st.columns(2)
+        with c_bull: st.markdown(f"<div class='thesis-col thesis-bull'><b>🚀 多头逻辑 (Bull Case)</b><br>{'<br>'.join([f'✅ {b}' for b in bulls])}</div>", unsafe_allow_html=True)
+        with c_bear: st.markdown(f"<div class='thesis-col thesis-bear'><b>🔻 空头逻辑 (Bear Case)</b><br>{'<br>'.join([f'⚠️ {b}' for b in bears])}</div>", unsafe_allow_html=True)
 
 tabs = st.tabs(["📰 资讯/评级", "👥 筹码结构", "💰 估值", "🔮 宏观与期权", "📊 财报"])
 
