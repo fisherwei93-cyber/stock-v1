@@ -1,7 +1,7 @@
 import streamlit as st
 import os
 
-# ================= 0. 铁律配置 (V80: 百科全书 + 5大黑科技) =================
+# ================= 0. 铁律配置 (V80.1: 空值熔断修复) =================
 for key in ['HTTP_PROXY', 'HTTPS_PROXY', 'http_proxy', 'https_proxy']:
     if key in os.environ:
         del os.environ[key]
@@ -19,7 +19,7 @@ import re
 import sys
 import time
 
-# 2. 样式死锁 (UI 终极优化)
+# 2. 样式死锁
 st.markdown("""
 <style>
     /* 全局背景 */
@@ -85,8 +85,6 @@ st.markdown("""
     .wl-row:hover { border-left-color: #FF9F1C; background-color: #2A2A2A; }
     
     .social-box { display: flex; gap: 10px; margin-top: 10px; }
-    
-    /* 功能盒子 */
     .sig-box { background: rgba(6, 78, 59, 0.8); border: 1px solid #065f46; padding: 10px; border-radius: 6px; margin-top: 10px; font-size: 13px; color: #fff; }
     .risk-box { background: rgba(127, 29, 29, 0.5); border: 1px solid #ef4444; padding: 10px; border-radius: 6px; margin-top: 10px; font-size: 13px; color: #fff; }
     .note-box { background: #1e1b4b; border-left: 4px solid #6366f1; padding: 10px; font-size: 12px; color: #e0e7ff; margin-top: 5px; border-radius: 4px; line-height: 1.6; }
@@ -162,31 +160,23 @@ def fetch_stock_full_data(ticker):
         # --- [NEW] 黑科技指标计算 ---
         
         # 1. SuperTrend (超级趋势)
-        # TR = max(high-low, abs(high-prev_close), abs(low-prev_close))
-        # ATR = sma(TR, 10)
-        # Basic Upper/Lower Band = (High + Low) / 2 +/- multiplier * ATR
         h['TR'] = np.maximum(h['High'] - h['Low'], np.abs(h['High'] - h['Close'].shift(1)))
         h['ATR'] = h['TR'].rolling(10).mean()
         multiplier = 3.0
         hl2 = (h['High'] + h['Low']) / 2
         h['ST_Upper'] = hl2 + (multiplier * h['ATR'])
         h['ST_Lower'] = hl2 - (multiplier * h['ATR'])
-        # SuperTrend 逻辑简化版: Close > ST_Upper -> Buy
         
         # 2. Z-Score (乖离率)
-        # Z = (Close - MA20) / Std20
         h['MA20'] = h['Close'].rolling(20).mean()
         h['STD20'] = h['Close'].rolling(20).std()
         h['Z_Score'] = (h['Close'] - h['MA20']) / h['STD20']
         
         # 3. Donchian Channels (唐奇安通道)
-        # Upper = Max(High, 20), Lower = Min(Low, 20)
         h['DC_Upper'] = h['High'].rolling(20).max()
         h['DC_Lower'] = h['Low'].rolling(20).min()
         
         # 4. FVG (Fair Value Gap) 聪明钱缺口
-        # Bullish FVG: Low[i] > High[i-2]
-        # Bearish FVG: High[i] < Low[i-2]
         h['FVG_Bull'] = (h['Low'] > h['High'].shift(2))
         h['FVG_Bear'] = (h['High'] < h['Low'].shift(2))
 
@@ -281,8 +271,9 @@ def fetch_stock_full_data(ticker):
                 opt_data = {"date": near_date, "calls": opt.calls, "puts": opt.puts}
         except: pass
 
+        # [FIX] 强制返回空字典而不是 None
         return {
-            "history": h, "info": s.info, "rt_price": rt_price,
+            "history": h, "info": s.info or {}, "rt_price": rt_price,
             "news": s.news, "upgrades": s.upgrades_downgrades,
             "fin": s.quarterly_financials, "inst": s.institutional_holders, "insider": s.insider_transactions,
             "compare": cmp_norm, "options": opt_data,
@@ -470,7 +461,7 @@ def generate_bull_bear_thesis(df, info):
     while len(bears) < 3: bears.append("暂无明显空头信号")
     return bulls[:3], bears[:3]
 
-# ================= 4. 百科全书渲染 =================
+# [NEW] Documentation
 def render_documentation():
     st.title("📚 摩根·功能说明书 (Wiki)")
     
@@ -478,10 +469,10 @@ def render_documentation():
     <div class='wiki-card'>
         <div class='wiki-title'>1. 视野·交易计划 (Vision L-Box)</div>
         <div class='wiki-text'>
-            <b>核心逻辑：</b> 自动计算的关键点位系统，相当于你的“作战地图”。<br>
+            <b>核心逻辑：</b> 基于“L战法”的支撑压力系统。<br>
             <span class='wiki-tag'>R1/R2 (Resistance)</span>：压力位。股价涨到这里容易被打下来，是卖出或减仓的参考点。<br>
             <span class='wiki-tag'>S1/S2 (Support)</span>：支撑位。股价跌到这里容易反弹，是买入或补仓的参考点。<br>
-            <b>用法：</b> 只要股价在黄框上方，就保持多头思维；跌破黄框，果断止损。
+            <b>黄框</b>：是整个系统的大脑，直接告诉你现在是该买还是该卖。
         </div>
     </div>
     
