@@ -1,12 +1,12 @@
 import streamlit as st
 import os
 
-# ================= 0. 铁律配置 (V79: 百科全书 + 视觉终极修复) =================
+# ================= 0. Ironclad Config (V79.1: Hotfix) =================
 for key in ['HTTP_PROXY', 'HTTPS_PROXY', 'http_proxy', 'https_proxy']:
     if key in os.environ:
         del os.environ[key]
 
-st.set_page_config(page_title="摩根·V1 (Ultimate)", layout="wide", page_icon="🦁")
+st.set_page_config(page_title="Morgan V1 (Ultimate)", layout="wide", page_icon="🦁")
 
 import yfinance as yf
 import pandas as pd
@@ -19,14 +19,14 @@ import re
 import sys
 import time
 
-# 2. 样式死锁 (UI 暴力修正)
+# 2. Styling (Dark Mode)
 st.markdown("""
 <style>
-    /* 全局背景 */
+    /* Global Background */
     .stApp { background-color: #000000 !important; color: #FFFFFF !important; }
     section[data-testid="stSidebar"] { background-color: #111111 !important; }
 
-    /* [FIX] 强制修复指标文字颜色 */
+    /* High Visibility Metrics */
     div[data-testid="stMetricValue"] {
         color: #FFFFFF !important; 
         font-size: 28px !important;
@@ -34,12 +34,12 @@ st.markdown("""
         text-shadow: 0 0 10px rgba(255,255,255,0.3);
     }
     div[data-testid="stMetricLabel"] {
-        color: #9CA3AF !important; /* 亮灰 */
+        color: #9CA3AF !important;
         font-size: 14px !important;
         font-weight: 700 !important;
     }
     
-    /* [FIX] 修复折叠栏标题看不清的问题 (针对 image_246c81.png) */
+    /* Expander Header Visibility */
     .streamlit-expanderHeader {
         background-color: #222222 !important;
         border: 1px solid #444 !important;
@@ -47,7 +47,7 @@ st.markdown("""
         color: #FFFFFF !important;
     }
     .streamlit-expanderHeader p {
-        color: #FFFFFF !important; /* 强制标题文字为白 */
+        color: #FFFFFF !important;
         font-size: 16px !important;
         font-weight: 700 !important;
     }
@@ -56,7 +56,7 @@ st.markdown("""
         color: #FF9F1C !important;
     }
 
-    /* 视野黄框 */
+    /* Vision L-Box */
     .l-box {
         background-color: #FF9F1C;
         color: #000000 !important;
@@ -70,17 +70,17 @@ st.markdown("""
     .l-title { font-size: 18px; font-weight: 900; border-bottom: 2px solid #000; padding-bottom: 8px; margin-bottom: 12px; color: #000; }
     .l-item { display: flex; justify-content: space-between; align-items: center; font-size: 14px; font-weight: 600; border-bottom: 1px dashed rgba(0,0,0,0.2); padding: 4px 0; color: #000; }
     
-    /* 标签 */
+    /* Tags */
     .tg-s { background: rgba(0,0,0,0.1); padding: 1px 5px; border-radius: 4px; font-size: 11px; margin-left: 6px; color: #333; }
     .tg-m { background: #fffbeb; padding: 1px 5px; border-radius: 4px; font-size: 11px; margin-left: 6px; color: #854d0e; border: 1px solid #eab308; }
     .tg-h { background: #000; color: #FF9F1C; padding: 1px 6px; border-radius: 4px; font-size: 11px; margin-left: 6px; font-weight: 800; }
     
-    /* 评分卡 */
+    /* Score Card */
     .score-card { background: #1A1A1A; padding: 15px; border-radius: 12px; text-align: center; border: 1px solid #333; margin-bottom: 15px; }
     .sc-val { font-size: 42px; font-weight: 900; color: #4ade80; line-height: 1; }
     .sc-lbl { font-size: 12px; color: #D1D5DB; font-weight: bold; }
     
-    /* 列表项 */
+    /* Watchlist Rows */
     .wl-row { background-color: #1A1A1A; padding: 12px; margin-bottom: 8px; border-radius: 6px; border-left: 4px solid #555; cursor: pointer; display: flex; justify-content: space-between; align-items: center; border: 1px solid #333; color: #FFFFFF; }
     .wl-row:hover { border-left-color: #FF9F1C; background-color: #2A2A2A; }
     
@@ -94,7 +94,7 @@ st.markdown("""
     .thesis-bull { background: rgba(6, 78, 59, 0.8); border: 1px solid #34d399; color: #fff; }
     .thesis-bear { background: rgba(127, 29, 29, 0.8); border: 1px solid #f87171; color: #fff; }
     
-    /* 说明书样式 */
+    /* Wiki Styles */
     .wiki-card { background: #1A1A1A; border: 1px solid #333; border-radius: 8px; padding: 20px; margin-bottom: 20px; }
     .wiki-title { font-size: 18px; font-weight: bold; color: #FF9F1C; margin-bottom: 10px; border-bottom: 1px solid #444; padding-bottom: 5px; }
     .wiki-text { font-size: 14px; color: #E5E7EB; line-height: 1.6; }
@@ -104,7 +104,7 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# 字典 & 辅助函数
+# Dictionaries & Helpers
 FAMOUS_INSTITUTIONS = {"Vanguard":"先锋", "Blackrock":"贝莱德", "Morgan Stanley":"大摩", "Goldman":"高盛", "Jpmorgan":"小摩", "Citadel":"城堡", "State Street":"道富", "Berkshire":"伯克希尔"}
 RATING_MAP = {"Buy":"买入", "Hold":"持有", "Sell":"卖出", "Strong Buy":"强购", "Overweight":"增持", "Neutral":"中性", "Outperform":"跑赢"}
 FIN_MAP = {
@@ -144,7 +144,7 @@ except: HAS_YOUTUBE = False
 if 'watchlist' not in st.session_state: st.session_state.watchlist = ['TSLA', 'NVDA', 'AAPL', 'AMD', 'PLTR']
 if 'current_ticker' not in st.session_state: st.session_state.current_ticker = 'TSLA'
 
-# ================= 2. 数据引擎 =================
+# ================= 2. Data Engine =================
 
 @st.cache_data(ttl=300)
 def fetch_stock_full_data(ticker):
@@ -156,7 +156,7 @@ def fetch_stock_full_data(ticker):
         h = s.history(period="2y") 
         if h.empty: raise Exception("Yahoo无数据")
         
-        # --- 指标计算 ---
+        # --- Indicators ---
         # VWAP
         v = h['Volume'].values
         tp = (h['High'] + h['Low'] + h['Close']) / 3
@@ -221,7 +221,7 @@ def fetch_stock_full_data(ticker):
             else: td_down[i] = 0
         h['TD_UP'] = td_up; h['TD_DOWN'] = td_down
 
-        # 斐波那契
+        # Fibonacci
         max_p = h['High'].tail(120).max()
         min_p = h['Low'].tail(120).min()
         diff = max_p - min_p
@@ -230,7 +230,7 @@ def fetch_stock_full_data(ticker):
         h['Fib_500'] = min_p + 0.5 * diff
         h['Fib_618'] = min_p + 0.618 * diff
 
-        # 对比数据
+        # Compare
         try:
             h_recent = h.iloc[-504:] 
             spy = yf.Ticker("SPY").history(period="2y")['Close']
@@ -245,7 +245,6 @@ def fetch_stock_full_data(ticker):
             cmp_norm = cmp_df.iloc[start:] / cmp_df.iloc[start] - 1
         except: cmp_norm = pd.DataFrame()
 
-        # Option
         opt_data = None
         try:
             dates = s.options
@@ -316,6 +315,8 @@ def calculate_vision_analysis(df, info):
     ma200 = df['Close'].rolling(200).mean().iloc[-1]
     low_60 = df['Low'].tail(60).min(); high_60 = df['High'].tail(60).max()
     low_52w = df['Low'].tail(250).min(); high_52w = df['High'].tail(250).max()
+    # [FIXED HERE] Added high_20 definition
+    high_20 = df['High'].tail(20).max()
     
     pts = []
     if curr > ma20: pts.append({"t":"sup", "l":"小", "v":ma20, "d":"MA20/月线"})
@@ -325,7 +326,7 @@ def calculate_vision_analysis(df, info):
     if curr > ma200: pts.append({"t":"sup", "l":"超强", "v":ma200, "d":"MA200/年线"})
     if curr > low_52w: pts.append({"t":"sup", "l":"超强", "v":low_52w, "d":"52周低"})
     if curr < ma20: pts.append({"t":"res", "l":"小", "v":ma20, "d":"MA20/反压"})
-    if curr < high_20: pts.append({"t":"res", "l":"小", "v":high_60, "d":"短期前高"}) # Fix
+    if curr < high_20: pts.append({"t":"res", "l":"小", "v":high_20, "d":"短期前高"})
     if curr < ma60: pts.append({"t":"res", "l":"中", "v":ma60, "d":"MA60"})
     if curr < high_60: pts.append({"t":"res", "l":"强", "v":high_60, "d":"箱体顶/套牢区"})
     if curr < high_52w: pts.append({"t":"res", "l":"超强", "v":high_52w, "d":"52周高/历史顶"})
@@ -443,7 +444,7 @@ def generate_bull_bear_thesis(df, info):
     while len(bears) < 3: bears.append("暂无明显空头信号")
     return bulls[:3], bears[:3]
 
-# [NEW] 说明书渲染函数
+# [NEW] Documentation
 def render_documentation():
     st.title("📚 摩根·功能说明书 (Wiki)")
     
@@ -497,7 +498,7 @@ def render_documentation():
     </div>
     """, unsafe_allow_html=True)
 
-# [NEW] 主APP渲染函数
+# [NEW] Main App
 def render_main_app():
     ticker = st.session_state.current_ticker
     with st.spinner(f"🦁 正在连接华尔街数据源: {ticker} ..."):
@@ -518,7 +519,7 @@ def render_main_app():
     else:
         rt_price, chg, l_an = 0, 0, None
 
-    # 主界面Header
+    # Header
     c_main, c_fac = st.columns([2, 3])
     with c_main:
         st.metric(f"{ticker} 实时", f"${rt_price:.2f}", f"{chg:.2%}")
@@ -567,6 +568,7 @@ def render_main_app():
             
             fig.update_layout(height=800, xaxis_rangeslider_visible=True, margin=dict(l=0,r=0,t=10,b=0), hovermode="x unified", template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', showlegend=True, legend=dict(orientation="h", y=1.02))
             st.plotly_chart(fig, use_container_width=True)
+            st.markdown("<div class='teach-box'><b>🎓 指标教学</b><br><b>🟡 VWAP (机构线)</b>：如果 K 线在黄线之上，说明机构在买入护盘；如果在之下，说明机构在出货。</div>", unsafe_allow_html=True)
             
         with st.expander("📅 历史季节性 & 蒙特卡洛预测 [点击展开]", expanded=False):
             c_seas, c_mc = st.columns(2)
@@ -777,12 +779,10 @@ def render_main_app():
                 st.dataframe(fdf, use_container_width=True)
         else: st.write("无财报数据")
 
-# ================= 导航逻辑 =================
-# 在侧边栏顶部添加导航
+# ================= Navigation Logic =================
 page = st.sidebar.radio("📌 导航", ["🚀 股票分析", "📖 功能说明书"])
 
 if page == "🚀 股票分析":
-    # 侧边栏内容
     with st.sidebar:
         with st.expander("📺 视频分析 (YouTube)", expanded=True):
             yt_url = st.text_input("视频链接", placeholder="粘贴URL...")
@@ -801,7 +801,6 @@ if page == "🚀 股票分析":
             c = "#4ade80" if s>=60 else "#f87171"
             st.markdown(f"<div class='score-card'><div class='sc-lbl'>MORGAN SCORE</div><div class='sc-val' style='color:{c}'>{s}</div><div class='sc-lbl' style='color:#9CA3AF'>{n}</div></div>", unsafe_allow_html=True)
         
-        # 实时数据
         ticker = st.session_state.current_ticker
         with st.spinner(f"🦁 正在连接华尔街数据源: {ticker} ..."):
             data = fetch_stock_full_data(ticker)
@@ -866,9 +865,7 @@ if page == "🚀 股票分析":
             if cols[0].button("分析", key=f"a_{sym}"): st.session_state.current_ticker = sym; st.rerun()
             if cols[1].button("删", key=f"d_{sym}"): st.session_state.watchlist.remove(sym); st.rerun()
 
-    # 执行主程序
     render_main_app()
 
 else:
-    # 执行说明书
     render_documentation()
