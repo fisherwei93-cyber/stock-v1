@@ -10,15 +10,9 @@ import re
 import sys
 import time
 
-# ================= 0. 铁律配置 (版本1 基准) =================
-PROXY_URL = "http://127.0.0.1:8080"
-if os.environ.get("STREAMLIT_SERVER_PORT"):
-    pass
-else:
-    os.environ["HTTP_PROXY"] = PROXY_URL
-    os.environ["HTTPS_PROXY"] = PROXY_URL
-
-st.set_page_config(page_title="摩根·V1 (修复版)", layout="wide", page_icon="🦁")
+# ================= 0. 铁律配置 (移除代理，云端直连) =================
+# [FIX] V71.4: 删除了本地代理配置，解决 Cloud 连接拒绝问题
+st.set_page_config(page_title="摩根·V1 (Pro)", layout="wide", page_icon="🦁")
 
 # 2. 样式死锁
 st.markdown("""
@@ -98,7 +92,7 @@ def fetch_stock_full_data(ticker):
         except: rt_price = s.info.get('currentPrice', 0)
         
         h = s.history(period="5y") 
-        if h.empty: raise Exception("Yahoo无数据")
+        if h.empty: raise Exception("Yahoo无数据或网络连接失败")
         
         # 指标计算
         exp12 = h['Close'].ewm(span=12, adjust=False).mean()
@@ -180,9 +174,14 @@ def fetch_stock_full_data(ticker):
             "error": None
         }
     except Exception as e:
+        # [FIX] 即使失败，也要返回完整的 Key 结构，防止 KeyError
         dates = pd.date_range(end=datetime.datetime.today(), periods=50)
         df = pd.DataFrame({'Open':100,'Close':100,'High':100,'Low':100,'Volume':0}, index=dates)
-        return {"history":df, "info":{}, "rt_price":0, "news":[], "error": str(e), "compare":pd.DataFrame(), "options":None}
+        return {
+            "history":df, "info":{}, "rt_price":0, "news":[], "error": str(e), 
+            "compare":pd.DataFrame(), "options":None, 
+            "upgrades":None, "fin":None, "inst":None, "insider":None
+        }
 
 @st.cache_data(ttl=3600)
 def fetch_macro_data():
@@ -378,7 +377,7 @@ with st.spinner(f"🦁 正在连接华尔街数据源: {ticker} ..."):
     data = fetch_stock_full_data(ticker)
 
 if data['error']:
-    st.error(f"数据获取失败: {data['error']}")
+    st.error(f"数据获取失败 (可能是网络波动，请刷新): {data['error']}")
     h, i = pd.DataFrame(), {}
 else:
     h, i = data['history'], data['info']
@@ -395,7 +394,7 @@ else:
 
 # 渲染侧边栏
 with st.sidebar:
-    st.title("🦁 摩根·V1 (修复版)")
+    st.title("🦁 摩根·V1 (Pro)")
     
     with st.expander("📺 视频分析 (YouTube)", expanded=True):
         yt_url = st.text_input("视频链接", placeholder="粘贴URL...")
