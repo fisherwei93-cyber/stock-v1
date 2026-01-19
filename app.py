@@ -1,12 +1,14 @@
 import streamlit as st
 import os
 
-# ================= 0. 铁律配置 (V82.1: 修复关联性缺失) =================
+# ================= 0. 铁律配置 (Morgan V1.0 Final) =================
+# 1. 净化环境：移除所有代理，确保云端直连
 for key in ['HTTP_PROXY', 'HTTPS_PROXY', 'http_proxy', 'https_proxy']:
     if key in os.environ:
         del os.environ[key]
 
-st.set_page_config(page_title="摩根·V1 (Value)", layout="wide", page_icon="🦁")
+# 2. 页面元数据
+st.set_page_config(page_title="摩根·V1 (Final)", layout="wide", page_icon="🦁")
 
 import yfinance as yf
 import pandas as pd
@@ -19,14 +21,14 @@ import re
 import sys
 import time
 
-# 2. 样式死锁
+# ================= 1. 样式死锁 (Dark Mode UI) =================
 st.markdown("""
 <style>
-    /* 全局背景 */
+    /* 全局背景：纯黑 */
     .stApp { background-color: #000000 !important; color: #FFFFFF !important; }
     section[data-testid="stSidebar"] { background-color: #111111 !important; }
 
-    /* 指标高亮 */
+    /* 指标高亮 (荧光白) */
     div[data-testid="stMetricValue"] {
         color: #FFFFFF !important; 
         font-size: 28px !important;
@@ -39,7 +41,7 @@ st.markdown("""
         font-weight: 700 !important;
     }
     
-    /* 折叠栏 */
+    /* 折叠栏标题高亮 */
     .streamlit-expanderHeader {
         background-color: #222222 !important;
         border: 1px solid #444 !important;
@@ -56,7 +58,7 @@ st.markdown("""
         color: #FF9F1C !important;
     }
 
-    /* 视野黄框 */
+    /* 视野黄框 (L-Box) */
     .l-box {
         background-color: #FF9F1C;
         color: #000000 !important;
@@ -70,7 +72,7 @@ st.markdown("""
     .l-title { font-size: 18px; font-weight: 900; border-bottom: 2px solid #000; padding-bottom: 8px; margin-bottom: 12px; color: #000; }
     .l-item { display: flex; justify-content: space-between; align-items: center; font-size: 14px; font-weight: 600; border-bottom: 1px dashed rgba(0,0,0,0.2); padding: 4px 0; color: #000; }
     
-    /* 标签 */
+    /* 标签系统 */
     .tg-s { background: rgba(0,0,0,0.1); padding: 1px 5px; border-radius: 4px; font-size: 11px; margin-left: 6px; color: #333; }
     .tg-m { background: #fffbeb; padding: 1px 5px; border-radius: 4px; font-size: 11px; margin-left: 6px; color: #854d0e; border: 1px solid #eab308; }
     .tg-h { background: #000; color: #FF9F1C; padding: 1px 6px; border-radius: 4px; font-size: 11px; margin-left: 6px; font-weight: 800; }
@@ -84,6 +86,7 @@ st.markdown("""
     .wl-row { background-color: #1A1A1A; padding: 12px; margin-bottom: 8px; border-radius: 6px; border-left: 4px solid #555; cursor: pointer; display: flex; justify-content: space-between; align-items: center; border: 1px solid #333; color: #FFFFFF; }
     .wl-row:hover { border-left-color: #FF9F1C; background-color: #2A2A2A; }
     
+    /* 功能盒子 */
     .social-box { display: flex; gap: 10px; margin-top: 10px; }
     .sig-box { background: rgba(6, 78, 59, 0.8); border: 1px solid #065f46; padding: 10px; border-radius: 6px; margin-top: 10px; font-size: 13px; color: #fff; }
     .risk-box { background: rgba(127, 29, 29, 0.5); border: 1px solid #ef4444; padding: 10px; border-radius: 6px; margin-top: 10px; font-size: 13px; color: #fff; }
@@ -95,10 +98,15 @@ st.markdown("""
     .thesis-bull { background: rgba(6, 78, 59, 0.8); border: 1px solid #34d399; color: #fff; }
     .thesis-bear { background: rgba(127, 29, 29, 0.8); border: 1px solid #f87171; color: #fff; }
     
-    /* 研报样式 */
+    /* 研报与Wiki样式 */
     .report-title { font-size: 22px; font-weight: 900; color: #FF9F1C; margin-bottom: 10px; border-left: 5px solid #FF9F1C; padding-left: 10px; }
     .report-text { font-size: 15px; line-height: 1.8; color: #E5E7EB; margin-bottom: 20px; background: #1A1A1A; padding: 15px; border-radius: 8px; }
     .guru-check { display: flex; align-items: center; margin-bottom: 8px; padding: 8px; background: #262626; border-radius: 6px; }
+    
+    .wiki-card { background: #1A1A1A; border: 1px solid #333; border-radius: 8px; padding: 20px; margin-bottom: 20px; }
+    .wiki-title { font-size: 20px; font-weight: bold; color: #FF9F1C; margin-bottom: 15px; border-bottom: 1px solid #444; padding-bottom: 5px; }
+    .wiki-text { font-size: 14px; color: #E5E7EB; line-height: 1.8; margin-bottom: 10px; }
+    .wiki-tag { background: #374151; color: #fff; padding: 2px 6px; border-radius: 4px; font-size: 12px; margin-right: 5px; border: 1px solid #555; }
     
     header {visibility: hidden;}
 </style>
@@ -144,7 +152,7 @@ except: HAS_YOUTUBE = False
 if 'watchlist' not in st.session_state: st.session_state.watchlist = ['TSLA', 'NVDA', 'AAPL', 'AMD', 'PLTR']
 if 'current_ticker' not in st.session_state: st.session_state.current_ticker = 'TSLA'
 
-# ================= 2. 数据引擎 =================
+# ================= 2. 数据引擎 (Core Engine) =================
 
 @st.cache_data(ttl=300)
 def fetch_stock_full_data(ticker):
@@ -156,7 +164,7 @@ def fetch_stock_full_data(ticker):
         h = s.history(period="2y") 
         if h.empty: raise Exception("Yahoo无数据")
         
-        # --- [NEW] 黑科技指标计算 ---
+        # --- 黑科技指标计算 ---
         # 1. SuperTrend
         h['TR'] = np.maximum(h['High'] - h['Low'], np.abs(h['High'] - h['Close'].shift(1)))
         h['ATR'] = h['TR'].rolling(10).mean()
@@ -183,13 +191,13 @@ def fetch_stock_full_data(ticker):
         tp = (h['High'] + h['Low'] + h['Close']) / 3
         h['VWAP'] = (tp * v).cumsum() / v.cumsum()
 
-        # Williams %R
+        # 6. Williams %R
         lookback = 14
         hh = h['High'].rolling(lookback).max()
         ll = h['Low'].rolling(lookback).min()
         h['WR'] = -100 * (hh - h['Close']) / (hh - ll)
 
-        # 基础指标
+        # 基础指标 (MACD, RSI, KDJ, OBV, CMF, MA, BOLL)
         exp12 = h['Close'].ewm(span=12, adjust=False).mean()
         exp26 = h['Close'].ewm(span=26, adjust=False).mean()
         h['MACD'] = exp12 - exp26
@@ -246,6 +254,7 @@ def fetch_stock_full_data(ticker):
         h['Fib_500'] = min_p + 0.5 * diff
         h['Fib_618'] = min_p + 0.618 * diff
 
+        # 对比数据
         try:
             h_recent = h.iloc[-504:] 
             spy = yf.Ticker("SPY").history(period="2y")['Close']
@@ -269,7 +278,7 @@ def fetch_stock_full_data(ticker):
                 opt_data = {"date": near_date, "calls": opt.calls, "puts": opt.puts}
         except: pass
 
-        # [FIX] 钛合金防爆门
+        # [FIX] 钛合金防爆门：强制保证 info 是字典
         safe_info = s.info if s.info is not None else {}
         
         return {
@@ -296,7 +305,7 @@ def fetch_macro_data():
         return data
     except: return None
 
-# [FIX] 补全缺失函数
+# [RESTORED] 关联性计算函数
 @st.cache_data(ttl=3600)
 def fetch_correlation_data(ticker):
     try:
@@ -304,6 +313,9 @@ def fetch_correlation_data(ticker):
         data = yf.download([ticker] + benchmarks, period="1y", progress=False)['Close']
         if data.empty: return None
         data = data.pct_change().dropna()
+        # Handle MultiIndex column if present
+        if isinstance(data.columns, pd.MultiIndex):
+            data.columns = [c[0] for c in data.columns]
         if ticker not in data.columns: return None
         return data.corrwith(data[ticker]).drop(ticker)
     except: return None
@@ -345,7 +357,7 @@ def calculate_vision_analysis(df, info):
     ma200 = df['Close'].rolling(200).mean().iloc[-1]
     low_60 = df['Low'].tail(60).min(); high_60 = df['High'].tail(60).max()
     low_52w = df['Low'].tail(250).min(); high_52w = df['High'].tail(250).max()
-    high_20 = df['High'].tail(20).max()
+    high_20 = df['High'].tail(20).max() # [RESTORED]
     
     pts = []
     if curr > ma20: pts.append({"t":"sup", "l":"小", "v":ma20, "d":"MA20/月线"})
