@@ -1,14 +1,13 @@
 import streamlit as st
 import os
 
-# ================= 0. 铁律配置 (V74: 暗黑模式 + 强力净化) =================
-# 1. 清除代理
+# ================= 0. 铁律配置 (V75: 荧光修复 + 新功能) =================
+# 清除代理
 for key in ['HTTP_PROXY', 'HTTPS_PROXY', 'http_proxy', 'https_proxy']:
     if key in os.environ:
         del os.environ[key]
 
-# 2. 页面配置
-st.set_page_config(page_title="摩根·V1 (Dark)", layout="wide", page_icon="🦁")
+st.set_page_config(page_title="摩根·V1 (Dark Pro)", layout="wide", page_icon="🦁")
 
 import yfinance as yf
 import pandas as pd
@@ -20,27 +19,34 @@ import re
 import sys
 import time
 
-# 2. 样式死锁 (Dark Mode 重绘)
+# 2. 样式死锁 (UI 强力修复)
 st.markdown("""
 <style>
-    /* 全局背景：深空灰/黑 */
-    .stApp {
-        background-color: #0E1117;
-        color: #FAFAFA;
+    /* 全局背景 */
+    .stApp { background-color: #0E1117; color: #FAFAFA; }
+    section[data-testid="stSidebar"] { background-color: #1A1C24; }
+
+    /* [FIX] 强制修复指标文字颜色 */
+    div[data-testid="stMetricValue"] {
+        color: #FFFFFF !important; /* 纯白高亮 */
+        font-weight: 900 !important;
+        text-shadow: 0 0 10px rgba(255,255,255,0.2);
     }
-    
-    /* 侧边栏背景优化 */
-    section[data-testid="stSidebar"] {
-        background-color: #262730;
+    div[data-testid="stMetricLabel"] {
+        color: #D1D5DB !important; /* 亮银色 */
+        font-weight: 600 !important;
+    }
+    div[data-testid="stMetricDelta"] svg {
+        fill: currentColor;
     }
 
-    /* 视野黄框 (保持经典橙色，黑字) */
+    /* 视野黄框 (黑字高亮) */
     .l-box {
         background-color: #FF9F1C;
         color: #000000 !important;
         padding: 15px;
         border-radius: 8px;
-        box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+        box-shadow: 0 4px 15px rgba(255, 159, 28, 0.3);
         margin-bottom: 20px;
         border: 1px solid #e68a00;
         font-family: 'Segoe UI', sans-serif;
@@ -49,51 +55,56 @@ st.markdown("""
     .l-sub { font-size: 15px; font-weight: 800; text-decoration: underline; margin-top: 15px; margin-bottom: 8px; color: #000; }
     .l-item { display: flex; justify-content: space-between; align-items: center; font-size: 14px; font-weight: 600; border-bottom: 1px dashed rgba(0,0,0,0.2); padding: 4px 0; color: #000; }
     
-    /* 标签系统 */
+    /* 标签 */
     .tg-s { background: rgba(0,0,0,0.1); padding: 1px 5px; border-radius: 4px; font-size: 11px; margin-left: 6px; color: #333; }
     .tg-m { background: #fffbeb; padding: 1px 5px; border-radius: 4px; font-size: 11px; margin-left: 6px; color: #854d0e; border: 1px solid #eab308; }
     .tg-h { background: #000; color: #FF9F1C; padding: 1px 6px; border-radius: 4px; font-size: 11px; margin-left: 6px; font-weight: 800; }
     
-    /* 评分卡 (暗黑版) */
+    /* 评分卡 (深色玻璃态) */
     .score-card { 
-        background-color: #262730; 
+        background: linear-gradient(145deg, #1f2937, #111827);
         padding: 15px; 
-        border-radius: 10px; 
+        border-radius: 12px; 
         text-align: center; 
-        border: 1px solid #41424C; 
+        border: 1px solid #374151; 
         margin-bottom: 15px; 
     }
-    .sc-val { font-size: 42px; font-weight: 900; color: #4ade80; line-height: 1; } /* 亮绿色 */
-    .sc-lbl { font-size: 12px; color: #A3A8B8; font-weight: bold; }
+    .sc-val { font-size: 42px; font-weight: 900; color: #4ade80; line-height: 1; }
+    .sc-lbl { font-size: 12px; color: #9CA3AF; font-weight: bold; }
     
-    /* 自选股列表 (暗黑版) */
+    /* 自选股 & 按钮 */
     .wl-row { 
-        background-color: #262730; 
-        padding: 8px 10px; 
-        margin-bottom: 5px; 
-        border-radius: 4px; 
-        border-left: 4px solid #555; 
+        background-color: #1F2937; 
+        padding: 10px; 
+        margin-bottom: 6px; 
+        border-radius: 6px; 
+        border-left: 4px solid #4B5563; 
         cursor: pointer; 
         display: flex; 
         justify-content: space-between; 
         align-items: center;
-        border: 1px solid #41424C;
-        color: white;
+        border: 1px solid #374151;
+        color: #F3F4F6;
+        transition: all 0.2s;
     }
-    .wl-row:hover { border-left-color: #3B82F6; background-color: #31333F; }
+    .wl-row:hover { border-left-color: #60A5FA; background-color: #374151; }
     
-    /* 社交按钮 */
     .social-box { display: flex; gap: 10px; margin-top: 10px; }
     
-    /* 信号/风控/教学 (暗黑适配) */
-    .sig-box { background: #064e3b; border: 1px solid #065f46; padding: 10px; border-radius: 6px; margin-top: 10px; font-size: 13px; color: #a7f3d0; }
-    .risk-box { background: #450a0a; border: 1px solid #7f1d1d; padding: 10px; border-radius: 6px; margin-top: 10px; font-size: 13px; color: #fecaca; }
-    .note-box { background: #1e1b4b; border-left: 4px solid #6366f1; padding: 10px; font-size: 12px; color: #c7d2fe; margin-top: 5px; border-radius: 4px; line-height: 1.6; }
-    .teach-box { background: #451a03; border-left: 4px solid #f59e0b; padding: 10px; font-size: 12px; color: #fcd34d; margin-top: 10px; border-radius: 4px; }
+    /* 功能盒子 */
+    .sig-box { background: rgba(6, 78, 59, 0.6); border: 1px solid #065f46; padding: 10px; border-radius: 6px; margin-top: 10px; font-size: 13px; color: #a7f3d0; }
+    .risk-box { background: rgba(69, 10, 10, 0.6); border: 1px solid #7f1d1d; padding: 10px; border-radius: 6px; margin-top: 10px; font-size: 13px; color: #fca5a5; }
+    .note-box { background: rgba(30, 27, 75, 0.6); border-left: 4px solid #6366f1; padding: 10px; font-size: 12px; color: #c7d2fe; margin-top: 5px; border-radius: 4px; line-height: 1.6; }
+    .teach-box { background: rgba(69, 26, 3, 0.6); border-left: 4px solid #f59e0b; padding: 10px; font-size: 12px; color: #fcd34d; margin-top: 10px; border-radius: 4px; }
     
     .thesis-col { flex: 1; padding: 10px; border-radius: 6px; font-size: 13px; margin-top:5px; }
-    .thesis-bull { background: #064e3b; border: 1px solid #065f46; color: #a7f3d0; }
-    .thesis-bear { background: #450a0a; border: 1px solid #7f1d1d; color: #fecaca; }
+    .thesis-bull { background: rgba(6, 78, 59, 0.6); border: 1px solid #065f46; color: #a7f3d0; }
+    .thesis-bear { background: rgba(69, 10, 10, 0.6); border: 1px solid #7f1d1d; color: #fca5a5; }
+    
+    /* 枢轴点表格 */
+    .pivot-table { width:100%; font-size:13px; color:#e5e7eb; border-collapse: collapse; }
+    .pivot-table td { padding: 4px; border-bottom: 1px solid #374151; }
+    .pivot-label { font-weight: bold; color: #9ca3af; }
     
     header {visibility: hidden;}
 </style>
@@ -149,7 +160,7 @@ def fetch_stock_full_data(ticker):
         except: rt_price = s.info.get('currentPrice', 0)
         
         h = s.history(period="5y") 
-        if h.empty: raise Exception("Yahoo无数据或网络连接失败")
+        if h.empty: raise Exception("Yahoo无数据")
         
         # 指标计算
         exp12 = h['Close'].ewm(span=12, adjust=False).mean()
@@ -273,6 +284,16 @@ def fetch_watchlist_snapshot(tickers):
         except: data.append({"sym":t, "p":0, "chg":0})
     return data
 
+# [ALGO] 枢轴点 (Pivot Points)
+def calculate_pivot_points(df):
+    if len(df) < 2: return None
+    last = df.iloc[-2] # 昨天
+    high = last['High']; low = last['Low']; close = last['Close']
+    p = (high + low + close) / 3
+    r1 = 2*p - low; s1 = 2*p - high
+    r2 = p + (high - low); s2 = p - (high - low)
+    return {"P":p, "R1":r1, "S1":s1, "R2":r2, "S2":s2}
+
 # [ALGO] 视野逻辑 5.1
 def calculate_vision_analysis(df, info):
     if len(df) < 250: return None
@@ -282,8 +303,8 @@ def calculate_vision_analysis(df, info):
     ma60 = df['Close'].rolling(60).mean().iloc[-1]
     ma120 = df['Close'].rolling(120).mean().iloc[-1]
     ma200 = df['Close'].rolling(200).mean().iloc[-1]
-    high_60 = df['High'].tail(60).max(); low_60 = df['Low'].tail(60).min()
-    high_52w = df['High'].tail(250).max(); low_52w = df['Low'].tail(250).min()
+    low_60 = df['Low'].tail(60).min(); high_60 = df['High'].tail(60).max()
+    low_52w = df['Low'].tail(250).min(); high_52w = df['High'].tail(250).max()
     high_20 = df['High'].tail(20).max()
     
     pts = []
@@ -397,7 +418,6 @@ def calculate_volume_profile(df, bins=50):
     return hist[1][:-1], hist[0]
 
 def generate_bull_bear_thesis(df, info):
-    # [FIX] 空数据熔断保护
     if df.empty: return [], []
     bulls = []; bears = []
     if 'Close' not in df.columns: return [], []
@@ -443,12 +463,13 @@ if not h.empty:
     chg = (rt_price - prev)/prev
     st.session_state.quant_score = calculate_quant_score(i, h)
     l_an = calculate_vision_analysis(h, i)
+    pivots = calculate_pivot_points(h) # [NEW]
 else:
-    rt_price, chg, l_an = 0, 0, None
+    rt_price, chg, l_an, pivots = 0, 0, None, None
 
 # 渲染侧边栏
 with st.sidebar:
-    st.title("🦁 摩根·V1 (Pro)")
+    st.title("🦁 摩根·V1 (Dark Pro)")
     
     with st.expander("📺 视频分析 (YouTube)", expanded=True):
         yt_url = st.text_input("视频链接", placeholder="粘贴URL...")
@@ -465,7 +486,7 @@ with st.sidebar:
     if 'quant_score' in st.session_state:
         s, n = st.session_state.quant_score
         c = "#4ade80" if s>=60 else "#f87171"
-        st.markdown(f"<div class='score-card'><div class='sc-lbl'>MORGAN SCORE</div><div class='sc-val' style='color:{c}'>{s}</div><div class='sc-lbl' style='color:#A3A8B8'>{n}</div></div>", unsafe_allow_html=True)
+        st.markdown(f"<div class='score-card'><div class='sc-lbl'>MORGAN SCORE</div><div class='sc-val' style='color:{c}'>{s}</div><div class='sc-lbl' style='color:#9CA3AF'>{n}</div></div>", unsafe_allow_html=True)
     
     if i:
         st.caption("📊 实时数据")
@@ -486,7 +507,7 @@ with st.sidebar:
             if h['TD_DOWN'].iloc[-1] == 9: signals.append("💎 神奇九转(低9)")
             
             if signals: st.markdown(f"<div class='sig-box'>{' | '.join(signals)}</div>", unsafe_allow_html=True)
-            else: st.markdown(f"<div class='sig-box' style='color:#94a3b8'>暂无明显技术信号</div>", unsafe_allow_html=True)
+            else: st.markdown(f"<div class='sig-box' style='color:gray'>暂无明显技术信号</div>", unsafe_allow_html=True)
 
             atr = h['ATR'].iloc[-1]
             curr_p = i.get('currentPrice', h['Close'].iloc[-1])
@@ -498,7 +519,7 @@ with st.sidebar:
                 <b>🛡️ 风控助手 (ATR动态止损)</b><br>
                 当前波动率: {atr:.2f}<br>
                 建议止损位: <span style='color:#f87171;font-weight:bold'>${stop_loss:.2f}</span><br>
-                <hr style='margin:5px 0; border-color: #7f1d1d'>
+                <hr style='margin:5px 0; border-color:#7f1d1d'>
                 当前回撤: {dd_curr:.1%}<br>
                 52周最大回撤: <b>{dd_max:.1%}</b>
             </div>
@@ -616,20 +637,34 @@ if not h.empty:
         fig3.add_trace(go.Scatter(x=h.index, y=h['UPPER'], line=dict(color='#6b7280', width=1), name='Upper'), row=5, col=1)
         fig3.add_trace(go.Scatter(x=h.index, y=h['LOWER'], line=dict(color='#6b7280', width=1), name='Lower', fill='tonexty'), row=5, col=1)
         fig3.add_trace(go.Scatter(x=h.index, y=h['Close'], line=dict(color='#3b82f6', width=1), name='Close'), row=5, col=1)
-        # 鲸鱼雷达
         colors_vol = ['#8b5cf6' if w else 'rgba(100,100,100,0.3)' for w in h['Whale'].iloc[-252:]]
         fig3.add_trace(go.Bar(x=vp_vol, y=vp_price, orientation='h', marker_color='rgba(100,100,100,0.3)', name='Vol Profile'), row=5, col=2)
         fig3.update_layout(height=1000, margin=dict(l=0,r=0,t=10,b=0), showlegend=False, template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)')
         st.plotly_chart(fig3, use_container_width=True)
         st.markdown("<div class='teach-box'><b>🎓 指标大师课</b><br>1. <b>OBV</b>：汽车油门。股价涨OBV没涨=背离(要跌)。<br>2. <b>MACD</b>：红柱多头，绿柱空头。0轴上方金叉最强。<br>3. <b>RSI</b>：>70超买，<30超卖。<br>4. <b>🐳 筹码分布</b>：柱子最长的地方是“筹码密集区”，跌到这里会有强支撑。</div>", unsafe_allow_html=True)
 
-with st.expander("🦁 市场雷达 (做空/分析师/分红) [点击展开]", expanded=False):
+with st.expander("🦁 市场雷达 & 枢轴点 (Pivot) [点击展开]", expanded=False):
     c1, c2, c3, c4 = st.columns(4)
     c1.metric("做空比例", fmt_pct(i.get('shortPercentOfFloat')))
     c2.metric("Beta", fmt_num(i.get('beta')))
     c3.metric("回补天数", fmt_num(i.get('shortRatio')))
     c4.metric("股息率", fmt_pct(i.get('dividendYield')))
-    st.markdown("<div class='note-box'><b>📖 雷达读数详解：</b><br>🔴 <b>做空比例</b>: >20% 极高风险(但也可能逼空)。<br>🎢 <b>Beta</b>: >1.5 高波动; <0.8 避险。<br>⏳ <b>回补天数</b>: >5天 空头难跑，利多。<br></div>", unsafe_allow_html=True)
+    
+    # [NEW] 枢轴点展示
+    if pivots:
+        st.markdown("---")
+        cp = st.columns(5)
+        cp[0].metric("R2 阻力", f"${pivots['R2']:.2f}")
+        cp[1].metric("R1 阻力", f"${pivots['R1']:.2f}")
+        cp[2].metric("Pivot 中轴", f"${pivots['P']:.2f}", help="股价在轴上为强，轴下为弱")
+        cp[3].metric("S1 支撑", f"${pivots['S1']:.2f}")
+        cp[4].metric("S2 支撑", f"${pivots['S2']:.2f}")
+    
+    # [NEW] RSI 热力条
+    rsi_val = h['RSI'].iloc[-1]
+    rsi_color = "red" if rsi_val > 70 else "green" if rsi_val < 30 else "gray"
+    st.markdown(f"<b>🌡️ RSI 热力:</b> {rsi_val:.1f} <span style='color:{rsi_color}'>{'🔥 超买' if rsi_val>70 else '❄️ 超卖' if rsi_val<30 else '😐 中性'}</span>", unsafe_allow_html=True)
+    st.progress(min(100, max(0, int(rsi_val))))
 
 if not h.empty:
     bulls, bears = generate_bull_bear_thesis(h, i)
