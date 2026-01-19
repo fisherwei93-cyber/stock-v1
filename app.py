@@ -1,7 +1,7 @@
 import streamlit as st
 import os
 
-# ================= 0. 铁律配置 (V82: 价值投资研报 + 磐石修复) =================
+# ================= 0. 铁律配置 (V82.1: 修复关联性缺失) =================
 for key in ['HTTP_PROXY', 'HTTPS_PROXY', 'http_proxy', 'https_proxy']:
     if key in os.environ:
         del os.environ[key]
@@ -19,7 +19,7 @@ import re
 import sys
 import time
 
-# 2. 样式死锁 (UI)
+# 2. 样式死锁
 st.markdown("""
 <style>
     /* 全局背景 */
@@ -39,7 +39,7 @@ st.markdown("""
         font-weight: 700 !important;
     }
     
-    /* 折叠栏优化 */
+    /* 折叠栏 */
     .streamlit-expanderHeader {
         background-color: #222222 !important;
         border: 1px solid #444 !important;
@@ -269,7 +269,7 @@ def fetch_stock_full_data(ticker):
                 opt_data = {"date": near_date, "calls": opt.calls, "puts": opt.puts}
         except: pass
 
-        # [FIX V82] 钛合金防爆门：强制保证 info 是字典
+        # [FIX] 钛合金防爆门
         safe_info = s.info if s.info is not None else {}
         
         return {
@@ -294,6 +294,18 @@ def fetch_macro_data():
         tickers = ["^VIX", "^TNX", "DX-Y.NYB"] 
         data = yf.download(tickers, period="5d", progress=False)['Close'].iloc[-1]
         return data
+    except: return None
+
+# [FIX] 补全缺失函数
+@st.cache_data(ttl=3600)
+def fetch_correlation_data(ticker):
+    try:
+        benchmarks = ['SPY', 'QQQ', 'GLD', 'BTC-USD']
+        data = yf.download([ticker] + benchmarks, period="1y", progress=False)['Close']
+        if data.empty: return None
+        data = data.pct_change().dropna()
+        if ticker not in data.columns: return None
+        return data.corrwith(data[ticker]).drop(ticker)
     except: return None
 
 @st.cache_data(ttl=60)
@@ -581,7 +593,7 @@ def render_main_app():
     c_main, c_fac = st.columns([2, 3])
     with c_main:
         st.metric(f"{ticker} 实时", f"${rt_price:.2f}", f"{chg:.2%}")
-        # [FIX V82] 安全获取字符串
+        # [FIX] 安全获取字符串
         safe_i = i if isinstance(i, dict) else {}
         name = safe_i.get('longName', ticker)
         ind = safe_i.get('industry', 'Unknown')
@@ -707,7 +719,7 @@ def render_main_app():
 
     with st.expander("🦁 市场雷达 & 基本面雷达 [点击展开]", expanded=False):
         c1, c2, c3, c4 = st.columns(4)
-        # [FIX V82] 安全获取字典值
+        # [FIX] 安全获取字典值
         safe_i = i if isinstance(i, dict) else {}
         c1.metric("做空比例", fmt_pct(safe_i.get('shortPercentOfFloat')))
         c2.metric("Beta", fmt_num(safe_i.get('beta')))
@@ -798,10 +810,10 @@ def render_main_app():
         # [FIX V82] 安全获取
         safe_i = i if isinstance(i, dict) else {}
         eps = safe_i.get('trailingEps', 0); bvps = safe_i.get('bookValue', 0)
-        if eps > 0 and bvps > 0:
+        if eps is not None and bvps is not None and eps > 0 and bvps > 0:
             graham = (22.5 * eps * bvps) ** 0.5
             st.metric("Graham Number", f"${graham:.2f}", f"{(graham-rt_price)/rt_price:.1%} Upside")
-        else: st.error("数据不足")
+        else: st.error("数据不足 (EPS/BVPS缺失)")
         st.markdown("---")
         st.subheader("💰 DCF 模型")
         peg = safe_i.get('pegRatio')
@@ -809,7 +821,7 @@ def render_main_app():
             peg_color = "#4ade80" if peg < 1 else "#fbbf24" if peg < 2 else "#f87171"
             st.caption(f"PEG: : {peg} <span style='color:{peg_color}'>●</span> ( <1 低估, >2 高估 )", unsafe_allow_html=True)
         g = st.slider("预期增长率 %", 0, 50, 15)
-        if eps > 0:
+        if eps is not None and eps > 0:
             val = (eps * ((1+g/100)**5) * 25) / (1.1**5)
             st.metric("估值", f"${val:.2f}")
 
@@ -834,17 +846,9 @@ def render_main_app():
             else: st.info("暂无期权数据")
         with c_macro:
             st.subheader("🌍 宏观 & 联动 (实时)")
-            macro = fetch_macro_data()
-            if macro is not None:
-                c_m1, c_m2, c_m3 = st.columns(3)
-                vix = macro['^VIX']; tnx = macro['^TNX']; dxy = macro['DX-Y.NYB']
-                c_m1.metric("VIX", f"{vix:.2f}")
-                c_m2.metric("10年美债", f"{tnx:.2f}%")
-                c_m3.metric("美元指数", f"{dxy:.2f}")
-                st.markdown("---")
-                st.caption(f"{ticker} 与主要资产的 1年 相关性:")
-                corrs = fetch_correlation_data(ticker)
-                if corrs is not None: st.bar_chart(corrs, height=150)
+            corrs = fetch_correlation_data(ticker)
+            if corrs is not None: 
+                st.bar_chart(corrs, height=150)
             else: st.info("宏观数据加载失败")
 
     with tabs[4]:
@@ -877,8 +881,8 @@ def render_main_app():
         gross_margin = safe_i.get('grossMargins', 0)
         roe = safe_i.get('returnOnEquity', 0)
         
-        gm_color = "#4ade80" if gross_margin > 0.4 else "#f87171"
-        roe_color = "#4ade80" if roe > 0.15 else "#f87171"
+        gm_color = "#4ade80" if gross_margin and gross_margin > 0.4 else "#f87171"
+        roe_color = "#4ade80" if roe and roe > 0.15 else "#f87171"
         
         c_m1, c_m2 = st.columns(2)
         c_m1.markdown(f"<div class='score-card'><div class='sc-lbl'>毛利率 (Gross Margin)</div><div class='sc-val' style='color:{gm_color}'>{fmt_pct(gross_margin)}</div><div class='sc-lbl'>巴菲特标准: >40%</div></div>", unsafe_allow_html=True)
@@ -902,7 +906,7 @@ def render_main_app():
         
         # Graham
         graham_pass = False
-        if eps > 0 and bvps > 0:
+        if eps is not None and bvps is not None and eps > 0 and bvps > 0:
             graham_price = (22.5 * eps * bvps) ** 0.5
             graham_pass = rt_price < graham_price
             st.markdown(f"""
