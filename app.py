@@ -1,16 +1,23 @@
 import streamlit as st
+import os
+
+# ================= 0. 铁律配置 (V73: 强力净化模式) =================
+# [核弹级修复] 强制清除所有可能残留的代理设置
+# 无论之前内存里留了什么，这里统统删掉，确保 100% 直连
+for key in ['HTTP_PROXY', 'HTTPS_PROXY', 'http_proxy', 'https_proxy']:
+    if key in os.environ:
+        del os.environ[key]
+
 import yfinance as yf
 import pandas as pd
 import numpy as np
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
-import os
 import datetime
 import re
 import sys
 import time
 
-# ================= 0. 铁律配置 (V73: 纯净版，无任何代理设置) =================
 st.set_page_config(page_title="摩根·V1 (Pro)", layout="wide", page_icon="🦁")
 
 # 2. 样式死锁
@@ -86,13 +93,13 @@ if 'current_ticker' not in st.session_state: st.session_state.current_ticker = '
 @st.cache_data(ttl=300)
 def fetch_stock_full_data(ticker):
     try:
-        # [关键修复] 移除所有代理设置，强制直连
+        # [核心修复] 直连 Yahoo，不走任何代理
         s = yf.Ticker(ticker)
         try: rt_price = s.fast_info.last_price
         except: rt_price = s.info.get('currentPrice', 0)
         
         h = s.history(period="5y") 
-        if h.empty: raise Exception("Yahoo无数据或网络连接失败")
+        if h.empty: raise Exception("Yahoo无数据，请检查股票代码或网络")
         
         # 指标计算
         exp12 = h['Close'].ewm(span=12, adjust=False).mean()
@@ -375,7 +382,7 @@ with st.spinner(f"🦁 正在连接华尔街数据源: {ticker} ..."):
     data = fetch_stock_full_data(ticker)
 
 if data['error']:
-    st.error(f"数据获取失败 (可能是网络波动，请刷新): {data['error']}")
+    st.error(f"数据获取失败 (请检查网络或点击Manage App重启): {data['error']}")
     h, i = pd.DataFrame(), {}
 else:
     h, i = data['history'], data['info']
@@ -486,6 +493,7 @@ with st.sidebar:
         if cols[0].button("分析", key=f"a_{sym}"): st.session_state.current_ticker = sym; st.rerun()
         if cols[1].button("删", key=f"d_{sym}"): st.session_state.watchlist.remove(sym); st.rerun()
 
+# 主区域渲染 (只在数据存在时)
 c_main, c_fac = st.columns([2, 3])
 with c_main:
     st.metric(f"{ticker} 实时", f"${rt_price:.2f}", f"{chg:.2%}")
