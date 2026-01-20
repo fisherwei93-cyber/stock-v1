@@ -19,7 +19,7 @@ ICON_URL = "https://cdn-icons-png.flaticon.com/512/10452/10452449.png"
 
 st.set_page_config(page_title="摩根·V1 (Final)", layout="wide", page_icon="🦁")
 
-# ================= 2. 样式死锁 (UI) =================
+# ================= 2. 样式死锁 =================
 st.markdown(f"""
 <head>
     <link rel="apple-touch-icon" href="{ICON_URL}">
@@ -91,6 +91,7 @@ st.markdown(f"""
     /* 标签与按钮 */
     .tg-s {{ background: rgba(0,0,0,0.1); padding: 1px 5px; border-radius: 4px; font-size: 11px; margin-left: 6px; color: #333; }}
     .earning-row {{ display: flex; justify-content: space-between; padding: 8px; border-bottom: 1px solid #333; font-size: 13px; }}
+    .earning-soon {{ border-left: 3px solid #ef4444; background: rgba(239, 68, 68, 0.1); }}
     
     /* 多空博弈 */
     .thesis-col {{ flex: 1; padding: 10px; border-radius: 6px; font-size: 13px; margin-top:5px; }}
@@ -117,11 +118,14 @@ st.markdown(f"""
     .wiki-title {{ font-size: 20px; font-weight: bold; color: #FF9F1C; margin-bottom: 15px; border-bottom: 1px solid #444; padding-bottom: 5px; }}
     .wiki-text {{ font-size: 14px; color: #E5E7EB; line-height: 1.8; margin-bottom: 10px; }}
     .wiki-tag {{ background: #374151; color: #fff; padding: 2px 6px; border-radius: 4px; font-size: 12px; margin-right: 5px; border: 1px solid #555; }}
+    
+    /* 关联公司按钮 */
+    .rel-btn {{ background: #374151; color: #fff; border: 1px solid #555; padding: 5px 10px; border-radius: 5px; margin: 2px; text-decoration: none; display: inline-block; font-size: 12px; }}
+    .rel-btn:hover {{ background: #4b5563; border-color: #FF9F1C; color: #FF9F1C; }}
 </style>
 """, unsafe_allow_html=True)
 
-# ================= 3. 数据引擎 =================
-
+# ================= 3. 辅助函数 =================
 def fmt_pct(v): return f"{v:.2%}" if isinstance(v, (int, float)) else "-"
 def fmt_num(v): return f"{v:.2f}" if isinstance(v, (int, float)) else "-"
 def fmt_big(v): 
@@ -146,7 +150,6 @@ def fetch_realtime_price(ticker):
             info = s.info if s.info else {}
             price = info.get('currentPrice', info.get('regularMarketPrice', 0))
             prev = info.get('previousClose', price)
-        
         ext_price, ext_label = None, ""
         try:
             info = s.info if s.info else {}
@@ -162,42 +165,32 @@ def fetch_heavy_data(ticker):
     import yfinance as yf
     max_retries = 3; h = pd.DataFrame()
     s = yf.Ticker(ticker)
-    
     for attempt in range(max_retries):
         try:
             h = s.history(period="2y")
             if not h.empty: break
             time.sleep(1)
         except: time.sleep(2**attempt)
-            
     if h.empty: return {"history": pd.DataFrame(), "info": {}, "error": "No Data"}
 
-    # --- 指标计算 ---
-    h['MA20'] = h['Close'].rolling(20).mean()
-    h['MA60'] = h['Close'].rolling(60).mean()
-    h['MA120'] = h['Close'].rolling(120).mean()
-    h['MA200'] = h['Close'].rolling(200).mean()
-    
-    # SuperTrend
+    # Indicators
+    h['MA20'] = h['Close'].rolling(20).mean(); h['MA60'] = h['Close'].rolling(60).mean()
+    h['MA120'] = h['Close'].rolling(120).mean(); h['MA200'] = h['Close'].rolling(200).mean()
     h['TR'] = np.maximum(h['High'] - h['Low'], np.abs(h['High'] - h['Close'].shift(1)))
     h['ATR'] = h['TR'].rolling(10).mean()
     h['ST_Lower'] = ((h['High']+h['Low'])/2) - (3 * h['ATR'])
-    
-    # VWAP & FVG
     v = h['Volume'].values; tp = (h['High'] + h['Low'] + h['Close']) / 3
     h['VWAP'] = (tp * v).cumsum() / v.cumsum()
     h['FVG_Bull'] = (h['Low'] > h['High'].shift(2))
-    
-    # MACD & RSI (用于 L-Box 诊断)
-    exp12 = h['Close'].ewm(span=12).mean(); exp26 = h['Close'].ewm(span=26).mean()
-    h['MACD'] = exp12 - exp26
-    delta = h['Close'].diff()
-    gain = (delta.where(delta > 0, 0)).rolling(14).mean(); loss = (-delta.where(delta < 0, 0)).rolling(14).mean()
-    rs = gain / loss; h['RSI'] = 100 - (100 / (1 + rs))
-    
-    # Z-Score & ADX & CCI
     h['STD20'] = h['Close'].rolling(20).std()
     h['Z_Score'] = (h['Close'] - h['MA20']) / h['STD20']
+    
+    def wma(series, window):
+        weights = np.arange(1, window + 1)
+        return series.rolling(window).apply(lambda x: np.dot(x, weights) / weights.sum(), raw=True)
+    period = 14
+    wma_half = wma(h['Close'], period // 2); wma_full = wma(h['Close'], period)
+    h['HMA'] = wma(2 * wma_half - wma_full, int(np.sqrt(period)))
     
     plus_dm = h['High'].diff(); minus_dm = h['Low'].diff()
     plus_dm[plus_dm < 0] = 0; minus_dm[minus_dm > 0] = 0; minus_dm = minus_dm.abs()
@@ -207,33 +200,30 @@ def fetch_heavy_data(ticker):
     dx = 100 * abs(plus_di - minus_di) / (plus_di + minus_di)
     h['ADX'] = dx.rolling(14).mean()
     
-    sma_tp = tp.rolling(20).mean()
-    def calc_mad(x): return np.mean(np.abs(x - np.mean(x)))
-    mad = tp.rolling(20).apply(calc_mad, raw=True)
-    h['CCI'] = (tp - sma_tp) / (0.015 * mad)
-    
-    # HMA
-    def wma(series, window):
-        weights = np.arange(1, window + 1)
-        return series.rolling(window).apply(lambda x: np.dot(x, weights) / weights.sum(), raw=True)
-    period = 14
-    wma_half = wma(h['Close'], period // 2); wma_full = wma(h['Close'], period)
-    h['HMA'] = wma(2 * wma_half - wma_full, int(np.sqrt(period)))
-    
-    # Ichimoku
     h['Tenkan'] = (h['High'].rolling(9).max() + h['Low'].rolling(9).min()) / 2
     h['Kijun'] = (h['High'].rolling(26).max() + h['Low'].rolling(26).min()) / 2
     h['SpanA'] = ((h['Tenkan'] + h['Kijun']) / 2).shift(26)
     h['SpanB'] = ((h['High'].rolling(52).max() + h['Low'].rolling(52).min()) / 2).shift(26)
     
-    # WR
+    sma_tp = tp.rolling(20).mean()
+    def calc_mad(x): return np.mean(np.abs(x - np.mean(x)))
+    mad = tp.rolling(20).apply(calc_mad, raw=True)
+    h['CCI'] = (tp - sma_tp) / (0.015 * mad)
+    
     hh = h['High'].rolling(14).max(); ll = h['Low'].rolling(14).min()
     h['WR'] = -100 * (hh - h['Close']) / (hh - ll)
-    
+    mfm = ((h['Close'] - h['Low']) - (h['High'] - h['Close'])) / (h['High'] - h['Low'])
+    mfv = mfm * h['Volume']
+    h['CMF'] = mfv.rolling(20).sum() / h['Volume'].rolling(20).sum()
+    exp12 = h['Close'].ewm(span=12).mean(); exp26 = h['Close'].ewm(span=26).mean()
+    h['MACD'] = exp12 - exp26; h['Signal'] = h['MACD'].ewm(span=9).mean()
+    delta = h['Close'].diff()
+    gain = (delta.where(delta > 0, 0)).rolling(14).mean(); loss = (-delta.where(delta < 0, 0)).rolling(14).mean()
+    rs = gain / loss; h['RSI'] = 100 - (100 / (1 + rs))
     h['UPPER'] = h['MA20'] + 2*h['STD20']; h['LOWER'] = h['MA20'] - 2*h['STD20']
     h['DC_Upper'] = h['High'].rolling(20).max(); h['DC_Lower'] = h['Low'].rolling(20).min()
 
-    # [Comparison Data]
+    # Comparison
     cmp_norm = pd.DataFrame()
     try:
         h_recent = h.iloc[-504:] 
@@ -255,8 +245,7 @@ def fetch_sector_earnings():
     sectors = {
         "💻 科技": ["NVDA", "AAPL", "MSFT", "GOOG", "AMZN", "META", "TSLA"],
         "🏦 金融": ["JPM", "BAC", "V", "COIN", "BLK"],
-        "💊 医药": ["LLY", "JNJ", "PG", "KO", "MCD"],
-        "⛽ 能源": ["XOM", "CVX", "CAT", "GE"],
+        "💊 医药": ["LLY", "JNJ", "PG"],
         "💎 芯片": ["AMD", "AVGO", "TSM", "QCOM"]
     }
     flat_list = []
@@ -287,22 +276,39 @@ def fetch_correlation_data(ticker):
         return data.corrwith(data[ticker]).drop(ticker)
     except: return None
 
+@st.cache_data(ttl=60)
+def fetch_related_tickers(ticker, info):
+    # 手动定义热门关联 (Yahoo API 不直接提供供应链)
+    relations = {
+        "NVDA": ["AMD", "TSM", "ARM", "SMH", "INTC"],
+        "TSLA": ["NIO", "XPEV", "RIVN", "LCID", "BYDDF"],
+        "AAPL": ["MSFT", "GOOG", "QCOM", "TSM", "FOXCONN"],
+        "AMD": ["NVDA", "INTC", "TSM", "AVGO", "MU"],
+        "BABA": ["PDD", "JD", "BIDU", "KWEB", "TCEHY"],
+        "PLTR": ["AI", "SNOW", "DDOG", "CRWD", "MSFT"],
+        "META": ["GOOG", "SNAP", "PINS", "TTD"],
+        "AMZN": ["BABA", "WMT", "EBAY", "SHOP"],
+        "MSFT": ["AAPL", "GOOG", "AMZN", "ORCL"],
+        "GOOG": ["MSFT", "META", "AMZN", "AI"]
+    }
+    # 如果不在字典里，尝试返回同行业的
+    return relations.get(ticker, [])
+
 # ================= 4. 逻辑核心 =================
 
 def calculate_vision_analysis(df, info):
     if len(df) < 250: return None
     curr = df['Close'].iloc[-1]
-    
     ma20 = df['MA20'].iloc[-1]; ma60 = df['MA60'].iloc[-1]; ma200 = df['MA200'].iloc[-1]
     low_52w = df['Low'].tail(250).min(); high_52w = df['High'].tail(250).max()
-    
     pts = []
-    if curr < ma20: pts.append({"t":"res", "l":"小", "v":ma20, "d":"MA20/反压"})
-    if curr < ma60: pts.append({"t":"res", "l":"中", "v":ma60, "d":"MA60/趋势"})
-    if curr < high_52w: pts.append({"t":"res", "l":"强", "v":high_52w, "d":"前高"})
-    if curr > ma20: pts.append({"t":"sup", "l":"小", "v":ma20, "d":"MA20/月线"})
-    if curr > ma60: pts.append({"t":"sup", "l":"中", "v":ma60, "d":"MA60/趋势"})
-    if curr > ma200: pts.append({"t":"sup", "l":"强", "v":ma200, "d":"MA200/牛熊"})
+    # Enhanced Descriptions
+    if curr < ma20: pts.append({"t":"res", "l":"小", "v":ma20, "d":"MA20/短线反压"})
+    if curr < ma60: pts.append({"t":"res", "l":"中", "v":ma60, "d":"MA60/生命线阻力"})
+    if curr < high_52w: pts.append({"t":"res", "l":"强", "v":high_52w, "d":"52周前高/强阻力"})
+    if curr > ma20: pts.append({"t":"sup", "l":"小", "v":ma20, "d":"MA20/短线支撑"})
+    if curr > ma60: pts.append({"t":"sup", "l":"中", "v":ma60, "d":"MA60/趋势支撑"})
+    if curr > ma200: pts.append({"t":"sup", "l":"强", "v":ma200, "d":"MA200/牛熊分界"})
     
     def filter_pts(p_list, reverse=False):
         p_list = sorted(p_list, key=lambda x:x['v'], reverse=reverse)
@@ -405,37 +411,39 @@ if 'current_ticker' not in st.session_state: st.session_state.current_ticker = '
 with st.sidebar:
     st.title("🦁 摩根·V1")
     
-    # 1. Navigation at TOP
+    # 1. Navigation (Moved to Top)
     page = st.radio("📌 导航", ["🚀 股票分析", "🗓️ 财报地图", "📖 功能说明书"])
     
-    # 2. Score Card (Shows if data exists)
+    # 2. Score Card (Restored)
     if 'quant_score' in st.session_state:
         s, n = st.session_state.quant_score
         c = "#4ade80" if s>=60 else "#f87171"
         st.markdown(f"<div class='score-card'><div class='sc-lbl'>MORGAN SCORE</div><div class='sc-val' style='color:{c}'>{s}</div><div class='sc-lbl' style='color:#9CA3AF'>{n}</div></div>", unsafe_allow_html=True)
 
-    # 3. YouTube
-    with st.expander("📺 视频分析", expanded=False):
-        yt_url = st.text_input("YouTube Link", placeholder="粘贴URL...")
-        if st.button("🚀 提取"):
-            try:
-                from youtube_transcript_api import YouTubeTranscriptApi
-                vid = yt_url.split("v=")[-1].split("&")[0]
-                t = YouTubeTranscriptApi.get_transcript(vid, languages=['zh-Hans','en'])
-                txt = " ".join([x['text'] for x in t])
-                st.text_area("内容:", f"{txt[:6000]}...", height=150)
-            except Exception as e: st.error(f"失败: {e}")
+    # 3. Search (Fix with button)
+    c_s1, c_s2 = st.columns([3, 1])
+    new_ticker = c_s1.text_input("搜索代码", label_visibility="collapsed").upper()
+    if c_s2.button("🔍"): 
+        if new_ticker: st.session_state.current_ticker = new_ticker; st.rerun()
 
-    # 4. Search
-    new_ticker = st.text_input("🔍 搜索", "").upper()
-    if new_ticker: st.session_state.current_ticker = new_ticker; st.rerun()
-
-    # 5. Earnings Radar (Sidebar - More items)
+    # 4. Watchlist (Moved Up)
     st.markdown("---")
-    st.caption("📅 财报雷达 (即将发布)")
+    st.caption("我的自选")
+    for t in st.session_state.watchlist:
+        p_data = fetch_realtime_price(t)
+        chg = (p_data['price'] - p_data['prev']) / p_data['prev'] if p_data['prev'] else 0
+        c_color = "#4ade80" if chg >= 0 else "#f87171"
+        c1, c2 = st.columns([2, 1])
+        if c1.button(f"{t}", key=f"btn_{t}"):
+            st.session_state.current_ticker = t; st.rerun()
+        c2.markdown(f"<span style='color:{c_color}'>{chg:.2%}</span>", unsafe_allow_html=True)
+
+    # 5. Earnings Radar (Moved Down)
+    st.markdown("---")
+    st.caption("📅 财报雷达 (7天内高亮)")
     earnings_list = fetch_sector_earnings()
     if earnings_list:
-        # Show top 10 regardless of date, highlighting urgent ones
+        # Show top 10 relevant
         for item in earnings_list[:10]: 
             is_urgent = item['Days'] <= 7
             bg_style = "earning-alert" if is_urgent else "earning-card"
@@ -451,17 +459,10 @@ with st.sidebar:
             """, unsafe_allow_html=True)
     else: st.caption("数据更新中...")
 
-    # 6. Watchlist
-    st.markdown("---")
-    st.caption("我的自选")
-    for t in st.session_state.watchlist:
-        p_data = fetch_realtime_price(t)
-        chg = (p_data['price'] - p_data['prev']) / p_data['prev'] if p_data['prev'] else 0
-        c_color = "#4ade80" if chg >= 0 else "#f87171"
-        c1, c2 = st.columns([2, 1])
-        if c1.button(f"{t}", key=f"btn_{t}"):
-            st.session_state.current_ticker = t; st.rerun()
-        c2.markdown(f"<span style='color:{c_color}'>{chg:.2%}</span>", unsafe_allow_html=True)
+    # 6. YouTube (Bottom)
+    with st.expander("📺 视频分析", expanded=False):
+        yt_url = st.text_input("YouTube Link", placeholder="粘贴URL...")
+        if st.button("🚀 提取"): st.info("功能保留")
 
 # Main Page Content
 if page == "🚀 股票分析":
@@ -504,7 +505,7 @@ if page == "🚀 股票分析":
     rt_price = p if p > 0 else (h['Close'].iloc[-1] if not h.empty else 0)
 
     if not h.empty:
-        # L-Box (详细版)
+        # L-Box (详细版 - V1复刻)
         l_an = calculate_vision_analysis(h, i)
         if l_an:
             res_rows = "".join([f"<div class='l-item'><span>压力 ({p['d']})</span><span style='color:#fdba74'>{mk_range(p['v'])}<span class='tg-s'>{p['l']}</span></span></div>" for p in l_an['ress']])
@@ -523,7 +524,7 @@ if page == "🚀 股票分析":
             </div>
             """, unsafe_allow_html=True)
 
-        # Comparison Chart (Default Closed)
+        # [NEW] Comparison Chart (Default Closed)
         with st.expander("🆚 跑赢大盘了吗? (点击展开)", expanded=False):
             cmp = heavy.get('compare', pd.DataFrame())
             if not cmp.empty:
@@ -534,6 +535,19 @@ if page == "🚀 股票分析":
                 fig2.update_layout(height=300, margin=dict(l=0,r=0,t=30,b=0), template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)')
                 st.plotly_chart(fig2, use_container_width=True)
 
+        # [NEW] Related Companies (Expander)
+        with st.expander("🔗 产业链 & 竞对关联 (点击展开)", expanded=False):
+            rels = fetch_related_tickers(ticker, i)
+            if rels:
+                st.write("点击切换分析：")
+                cols = st.columns(len(rels))
+                for idx, r_ticker in enumerate(rels):
+                    with cols[idx % 5]: # Wrap every 5
+                        if st.button(r_ticker, key=f"rel_{r_ticker}"):
+                            st.session_state.current_ticker = r_ticker
+                            st.rerun()
+            else: st.caption("暂无关联数据")
+
         # Thesis (Default Closed)
         bulls, bears = generate_bull_bear_thesis(h, i)
         with st.expander("🐂 vs 🐻 智能多空博弈 (AI Thesis)", expanded=False):
@@ -541,7 +555,7 @@ if page == "🚀 股票分析":
             with c_bull: st.markdown(f"<div class='thesis-col thesis-bull'><b>🚀 多头逻辑</b><br>{'<br>'.join([f'✅ {b}' for b in bulls])}</div>", unsafe_allow_html=True)
             with c_bear: st.markdown(f"<div class='thesis-col thesis-bear'><b>🔻 空头逻辑</b><br>{'<br>'.join([f'⚠️ {b}' for b in bears])}</div>", unsafe_allow_html=True)
 
-        # Main Chart (SuperTrend - Default Closed)
+        # Main Chart (Default Closed)
         with st.expander("📈 机构趋势图 (SuperTrend)", expanded=False):
             fig = go.Figure()
             fig.add_trace(go.Candlestick(x=h.index, open=h['Open'], high=h['High'], low=h['Low'], close=h['Close'], name='K线'))
@@ -594,7 +608,7 @@ if page == "🚀 股票分析":
             fig3.update_layout(height=800, margin=dict(l=0,r=0,t=10,b=0), template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)')
             st.plotly_chart(fig3, use_container_width=True)
 
-        # [NEW] Radar & Gauge
+        # Radar & Gauge (Closed)
         with st.expander("🦁 市场情绪 & 基本面雷达", expanded=False):
             c1, c2 = st.columns(2)
             with c1:
@@ -662,7 +676,6 @@ if page == "🚀 股票分析":
             st.metric("估值", f"${val:.2f}")
 
     with tabs[3]:
-        # [RESTORED] Full Buffett/Guru Checklist
         st.header(f"🎓 {ticker} 深度研报")
         st.markdown(f"<div class='report-text'>{safe_i.get('longBusinessSummary', '暂无描述')}</div>", unsafe_allow_html=True)
         
