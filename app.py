@@ -17,7 +17,7 @@ for key in ['HTTP_PROXY', 'HTTPS_PROXY', 'http_proxy', 'https_proxy']:
 
 ICON_URL = "https://cdn-icons-png.flaticon.com/512/10452/10452449.png"
 
-st.set_page_config(page_title="摩根·V1 (Final)", layout="wide", page_icon="🦁")
+st.set_page_config(page_title="摩根·V1 (Stable)", layout="wide", page_icon="🦁")
 
 # ================= 2. 样式死锁 (UI) =================
 st.markdown(f"""
@@ -109,12 +109,31 @@ st.markdown(f"""
     .social-box {{ display: flex; gap: 10px; margin-top: 10px; }}
     .mc-box {{ background: #0f172a; border: 1px solid #1e293b; padding: 10px; border-radius: 6px; margin-top:5px; }}
     .note-box {{ background: #1e1b4b; border-left: 4px solid #6366f1; padding: 10px; font-size: 12px; color: #e0e7ff; margin-top: 5px; border-radius: 4px; line-height: 1.6; }}
+    
     .streamlit-expanderHeader {{ background-color: #222 !important; color: #fff !important; border: 1px solid #444; }}
     
     /* 研报样式 */
     .report-title {{ font-size: 22px; font-weight: 900; color: #FF9F1C; margin-bottom: 10px; border-left: 5px solid #FF9F1C; padding-left: 10px; }}
     .report-text {{ font-size: 15px; line-height: 1.8; color: #E5E7EB; margin-bottom: 20px; background: #1A1A1A; padding: 15px; border-radius: 8px; }}
     .guru-check {{ display: flex; align-items: center; margin-bottom: 8px; padding: 8px; background: #262626; border-radius: 6px; }}
+    
+    /* 持仓卡片 */
+    .hold-card {{
+        background: rgba(30, 30, 30, 0.6); 
+        border-bottom: 1px solid #333; 
+        padding: 10px; 
+        display: flex; justify-content: space-between; align-items: center;
+        transition: 0.2s;
+    }}
+    .hold-card:hover {{ background: rgba(50, 50, 50, 0.8); }}
+    .hold-name {{ font-weight: 600; font-size: 13px; color: #f3f4f6; letter-spacing: 0.5px; }}
+    .hold-sub {{ font-size: 11px; color: #9ca3af; margin-top: 2px; }}
+    .hold-val {{ font-family: 'Segoe UI', monospace; font-weight: bold; color: #4ade80; font-size: 13px; }}
+    .hold-bar-container {{ width: 60px; height: 4px; background: #333; border-radius: 2px; margin-top: 4px; margin-left: auto; }}
+    .hold-bar-fill {{ height: 100%; background: linear-gradient(90deg, #3b82f6, #60a5fa); border-radius: 2px; }}
+    .hold-link a {{ color: #fff; text-decoration: none; }}
+    .hold-link a:hover {{ color: #FF9F1C; }}
+    
     .wiki-card {{ background: #1A1A1A; border: 1px solid #333; border-radius: 8px; padding: 20px; margin-bottom: 20px; }}
     .wiki-title {{ font-size: 20px; font-weight: bold; color: #FF9F1C; margin-bottom: 15px; border-bottom: 1px solid #444; padding-bottom: 5px; }}
     .wiki-text {{ font-size: 14px; color: #E5E7EB; line-height: 1.8; margin-bottom: 10px; }}
@@ -159,8 +178,9 @@ def fetch_realtime_price(ticker):
         return {"price": price, "prev": prev, "ext_price": ext_price, "ext_label": ext_label}
     except: return {"price": 0, "prev": 0, "ext_price": None, "ext_label": ""}
 
+# [FIX] V106: Rename to bust cache AND add circuit breakers for all components
 @st.cache_data(ttl=3600, show_spinner=False)
-def fetch_financial_data_v105(ticker):
+def fetch_financial_data_v106(ticker):
     import yfinance as yf
     max_retries = 3; h = pd.DataFrame()
     s = yf.Ticker(ticker)
@@ -200,11 +220,6 @@ def fetch_financial_data_v105(ticker):
     dx = 100 * abs(plus_di - minus_di) / (plus_di + minus_di)
     h['ADX'] = dx.rolling(14).mean()
     
-    h['Tenkan'] = (h['High'].rolling(9).max() + h['Low'].rolling(9).min()) / 2
-    h['Kijun'] = (h['High'].rolling(26).max() + h['Low'].rolling(26).min()) / 2
-    h['SpanA'] = ((h['Tenkan'] + h['Kijun']) / 2).shift(26)
-    h['SpanB'] = ((h['High'].rolling(52).max() + h['Low'].rolling(52).min()) / 2).shift(26)
-    
     sma_tp = tp.rolling(20).mean()
     def calc_mad(x): return np.mean(np.abs(x - np.mean(x)))
     mad = tp.rolling(20).apply(calc_mad, raw=True)
@@ -230,14 +245,38 @@ def fetch_financial_data_v105(ticker):
         cmp_norm = cmp_df.iloc[start:] / cmp_df.iloc[start] - 1
     except: pass
 
-    # [FIX] Info 熔断保护
+    # [FIX] V106: 安全获取所有易崩模块
     safe_info = {}
-    try:
-        safe_info = s.info
-        if safe_info is None: safe_info = {}
-    except: safe_info = {}
+    try: safe_info = s.info if s.info else {}
+    except: pass
+    
+    upgrades = None
+    try: upgrades = s.upgrades_downgrades
+    except: pass
+    
+    inst = None
+    try: inst = s.institutional_holders
+    except: pass
+    
+    insider = None
+    try: insider = s.insider_transactions
+    except: pass
+    
+    fin = None
+    try: fin = s.quarterly_financials
+    except: pass
 
-    return {"history": h, "info": safe_info, "compare": cmp_norm, "error": None, "upgrades": s.upgrades_downgrades, "inst": s.institutional_holders, "insider": s.insider_transactions, "fin": s.quarterly_financials, "options": None}
+    return {
+        "history": h, 
+        "info": safe_info, 
+        "compare": cmp_norm, 
+        "error": None, 
+        "upgrades": upgrades, 
+        "inst": inst, 
+        "insider": insider, 
+        "fin": fin, 
+        "options": None
+    }
 
 @st.cache_data(ttl=43200, show_spinner=False)
 def fetch_sector_earnings_v105():
@@ -262,13 +301,9 @@ def fetch_sector_earnings_v105():
             if e_date:
                 ed = datetime.datetime.strptime(str(e_date).split()[0], "%Y-%m-%d").date()
                 if ed >= today:
-                    # [NEW] 智能时间推算 (北京时间)
-                    # 默认: BMO(盘前) -> 20:00, AMC(盘后) -> 次日04:30
-                    time_label = "20:00 (盘前)" # Default
-                    # 常见盘后发财报的科技股
+                    time_label = "20:00 (盘前)" 
                     if t in ['NVDA', 'TSLA', 'AAPL', 'AMZN', 'GOOG', 'META', 'AMD', 'MSFT']:
                         time_label = "次日04:30 (盘后)"
-                    
                     results.append({"Code": t, "Sector": sec, "Date": str(ed), "Days": (ed - today).days, "Time": time_label, "Sort": (ed - today).days})
         except: pass
     return sorted(results, key=lambda x: x['Sort']) if results else []
@@ -337,7 +372,7 @@ def calculate_vision_analysis(df, info):
     ma20 = df['MA20'].iloc[-1]; ma60 = df['MA60'].iloc[-1]; ma200 = df['MA200'].iloc[-1]
     low_52w = df['Low'].tail(250).min(); high_52w = df['High'].tail(250).max()
     pts = []
-    if curr < ma20: pts.append({"t":"res", "l":"小", "v":ma20, "d":"MA20/短线反压"})
+    if curr < ma20: pts.append({"t":"res", "l":"小", "v":ma20, "d":"MA20/反压"})
     if curr < ma60: pts.append({"t":"res", "l":"中", "v":ma60, "d":"MA60/生命线"})
     if curr < high_52w: pts.append({"t":"res", "l":"强", "v":high_52w, "d":"52W前高"})
     if curr > ma20: pts.append({"t":"sup", "l":"小", "v":ma20, "d":"MA20/支撑"})
@@ -543,8 +578,8 @@ if page == "🚀 股票分析":
 
     # 2. 深度数据
     with st.spinner("🦁 正在调取机构底仓数据..."):
-        # [FIX] V105 call
-        heavy = fetch_financial_data_v105(ticker)
+        # [FIX] V106 call with safety
+        heavy = fetch_financial_data_v106(ticker)
 
     if heavy['error']:
         st.warning(f"深度数据暂时不可用: {heavy['error']}")
@@ -680,14 +715,12 @@ if page == "🚀 股票分析":
         
     with tabs[1]:
         c1, c2 = st.columns(2)
-        # Institutional Holdings (Back to Table for details)
+        # Institutional Holdings (Table)
         with c1:
             st.subheader("🏦 机构持仓")
             if heavy.get('inst') is not None and not heavy['inst'].empty:
                 idf = heavy['inst'].copy()
-                # Rename columns for Chinese
                 idf = idf.rename(columns={'Holder': '机构名称', 'pctHeld': '持仓占比', 'Shares': '持有股数', 'Value': '持仓市值', 'Date Reported': '报告日期'})
-                # Add link logic in a new column or just show table
                 st.dataframe(
                     idf[['机构名称', '持仓占比', '持有股数', '持仓市值']], 
                     column_config={
@@ -699,17 +732,14 @@ if page == "🚀 股票分析":
                     hide_index=True
                 )
                 st.caption("💡 提示：点击机构名可跳转 WhaleWisdom 查看详细调仓。")
-            else: st.info("暂无数据")
+            else: st.info("暂无数据 (可能由于网络原因)")
         
-        # Insider Trading (Enhanced UI)
+        # Insider Trading (Cards)
         with c2:
             st.subheader("🕴️ 内部交易")
             if heavy.get('insider') is not None and not heavy['insider'].empty:
-                # Process text to clean Chinese
-                ins_data = []
                 for index, row in heavy['insider'].head(15).iterrows():
                     trans_text = str(row.get('Text', ''))
-                    # Simple Parsing
                     action = "❓ 未知"
                     color = "#9ca3af"
                     if "Sale" in trans_text or "Sold" in trans_text:
@@ -725,7 +755,6 @@ if page == "🚀 股票分析":
                         action = "💪 行权"
                         color = "#3b82f6"
                     
-                    # Extract price
                     price_match = re.search(r'price\s\$?(\d+\.?\d*)', trans_text)
                     price = f"${price_match.group(1)}" if price_match else "-"
                     
@@ -741,7 +770,7 @@ if page == "🚀 股票分析":
                         </div>
                     </div>
                     """, unsafe_allow_html=True)
-            else: st.info("暂无数据")
+            else: st.info("暂无数据 (可能由于网络原因)")
 
     with tabs[2]:
         st.subheader("⚖️ 格雷厄姆合理价")
@@ -762,13 +791,13 @@ if page == "🚀 股票分析":
             st.metric("估值", f"${val:.2f}")
 
     with tabs[3]:
-        st.header(f"🎓 {ticker} 深度研报")
+        st.header(f"🎓 {ticker} 深度研报 (商业模式)")
         st.markdown(f"<div class='report-text'>{safe_i.get('longBusinessSummary', '暂无描述')}</div>", unsafe_allow_html=True)
         st.markdown("<div class='report-title'>2. 🏰 护城河分析</div>", unsafe_allow_html=True)
         gm = safe_i.get('grossMargins', 0); roe = safe_i.get('returnOnEquity', 0)
         c_m1, c_m2 = st.columns(2)
-        c_m1.markdown(f"<div class='score-card'><div class='sc-lbl'>毛利率 (Gross Margin)</div><div class='sc-val' style='color:{'#4ade80' if gm>0.4 else '#f87171'}'>{fmt_pct(gm)}</div><div class='sc-lbl'>标准: >40%</div></div>", unsafe_allow_html=True)
-        c_m2.markdown(f"<div class='score-card'><div class='sc-lbl'>ROE (净资产收益率)</div><div class='sc-val' style='color:{'#4ade80' if roe>0.15 else '#f87171'}'>{fmt_pct(roe)}</div><div class='sc-lbl'>标准: >15%</div></div>", unsafe_allow_html=True)
+        c_m1.markdown(f"<div class='score-card'><div class='sc-lbl'>毛利率</div><div class='sc-val' style='color:{'#4ade80' if gm>0.4 else '#f87171'}'>{fmt_pct(gm)}</div><div class='sc-lbl'>标准: >40%</div></div>", unsafe_allow_html=True)
+        c_m2.markdown(f"<div class='score-card'><div class='sc-lbl'>ROE</div><div class='sc-val' style='color:{'#4ade80' if roe>0.15 else '#f87171'}'>{fmt_pct(roe)}</div><div class='sc-lbl'>标准: >15%</div></div>", unsafe_allow_html=True)
         
         st.markdown("<div class='report-title'>3. 📞 尽职调查</div>", unsafe_allow_html=True)
         dd1, dd2 = st.columns(2)
