@@ -5,7 +5,7 @@ import re
 import sys
 import time
 
-# ================= 1. 铁律配置 (V85: 反封锁 + 全功能) =================
+# ================= 1. 铁律配置 (V86: 修复 MAD 崩溃 + 价值投资全功能) =================
 # 净化环境
 for key in ['HTTP_PROXY', 'HTTPS_PROXY', 'http_proxy', 'https_proxy']:
     if key in os.environ:
@@ -141,11 +141,11 @@ def smart_translate(t, d):
 if 'watchlist' not in st.session_state: st.session_state.watchlist = ['TSLA', 'NVDA', 'AAPL', 'AMD', 'PLTR']
 if 'current_ticker' not in st.session_state: st.session_state.current_ticker = 'TSLA'
 
-# ================= 4. 数据引擎 (Anti-Block) =================
+# ================= 4. 数据引擎 (Anti-Block + Pandas 2.0 Fix) =================
 
 @st.cache_data(ttl=300)
 def fetch_stock_full_data(ticker):
-    # [FIX V85] 指数退避重试机制，对抗 Rate Limit
+    # 指数退避重试机制
     max_retries = 3
     for attempt in range(max_retries):
         try:
@@ -222,10 +222,12 @@ def fetch_stock_full_data(ticker):
             period52_low = h['Low'].rolling(window=52).min()
             h['Senkou_Span_B'] = ((period52_high + period52_low) / 2).shift(26)
 
-            # 10. CCI
+            # 10. CCI (FIXED for Pandas 2.0)
             tp = (h['High'] + h['Low'] + h['Close']) / 3
             sma_tp = tp.rolling(20).mean()
-            mad = tp.rolling(20).apply(lambda x: pd.Series(x).mad())
+            # [FIX] Manually calc MAD (Mean Absolute Deviation) as .mad() is removed
+            def calc_mad(x): return np.mean(np.abs(x - np.mean(x)))
+            mad = tp.rolling(20).apply(calc_mad, raw=True)
             h['CCI'] = (tp - sma_tp) / (0.015 * mad)
 
             # 基础指标
@@ -320,7 +322,6 @@ def fetch_stock_full_data(ticker):
             }
             
         except Exception as e:
-            # 如果是最后一次尝试，且依然失败
             if attempt == max_retries - 1:
                 dates = pd.date_range(end=datetime.datetime.today(), periods=50)
                 df = pd.DataFrame({'Open':100,'Close':100,'High':100,'Low':100,'Volume':0}, index=dates)
@@ -329,7 +330,6 @@ def fetch_stock_full_data(ticker):
                     "compare":pd.DataFrame(), "options":None, 
                     "upgrades":None, "fin":None, "inst":None, "insider":None
                 }
-            # 否则，暂停并重试 (指数退避: 1s, 3s, 7s...)
             time.sleep(2**attempt + 1)
 
 @st.cache_data(ttl=3600)
@@ -539,6 +539,7 @@ def render_documentation():
     <div class='wiki-card'><div class='wiki-title'>11. ADX (趋势强度)</div><div class='wiki-text'><b>原理：</b> 判断有无趋势。<br>>25: 趋势强劲。<br><20: 震荡市(休息)。</div></div>
     <div class='wiki-card'><div class='wiki-title'>12. HMA (赫尔均线)</div><div class='wiki-text'><b>原理：</b> 零滞后均线，比MA更快。</div></div>
     <div class='wiki-card'><div class='wiki-title'>13. 凯利公式</div><div class='wiki-text'><b>原理：</b> 科学仓位管理。告诉你这把牌该下注多少钱。</div></div>
+    <div class='wiki-card'><div class='wiki-title'>14. CCI (顺势指标)</div><div class='wiki-text'><b>原理：</b> 抓极端行情。<br>>100: 超买。<br><-100: 超卖。</div></div>
     """, unsafe_allow_html=True)
 
 def render_main_app():
@@ -836,15 +837,15 @@ page = st.sidebar.radio("📌 导航", ["🚀 股票分析", "📖 功能说明�
 
 if page == "🚀 股票分析":
     with st.sidebar:
-        with st.expander("📺 视频分析", expanded=True):
+        with st.expander("📺 视频分析 (YouTube)", expanded=True):
             yt_url = st.text_input("视频链接", placeholder="粘贴URL...")
-            if st.button("🚀 提取"):
+            if st.button("🚀 提取 Prompt"):
                 try:
                     from youtube_transcript_api import YouTubeTranscriptApi
                     vid = yt_url.split("v=")[-1].split("&")[0]
                     t = YouTubeTranscriptApi.get_transcript(vid, languages=['zh-Hans','en'])
                     txt = " ".join([x['text'] for x in t])
-                    st.text_area("复制:", f"分析: {txt[:6000]}...", height=150)
+                    st.text_area("复制:", f"我是基金经理。分析此视频：\n1.核心观点\n2.提及股票\n3.多空判断\n\n内容：{txt[:6000]}...", height=150)
                 except Exception as e: st.error(f"提取失败: {e}")
 
         st.markdown("---")
@@ -853,7 +854,6 @@ if page == "🚀 股票分析":
             c = "#4ade80" if s>=60 else "#f87171"
             st.markdown(f"<div class='score-card'><div class='sc-lbl'>MORGAN SCORE</div><div class='sc-val' style='color:{c}'>{s}</div><div class='sc-lbl' style='color:#9CA3AF'>{n}</div></div>", unsafe_allow_html=True)
         
-        # 实时数据面板 (Sidebar)
         ticker = st.session_state.current_ticker
         with st.spinner(f"🦁 正在连接华尔街数据源: {ticker} ..."):
             data = fetch_stock_full_data(ticker)
@@ -878,7 +878,16 @@ if page == "🚀 股票分析":
                 stop_loss = curr_p - (2 * atr)
                 dd_curr = h['Drawdown'].iloc[-1]
                 dd_max = h['Drawdown'].min()
-                st.markdown(f"<div class='risk-box'><b>🛡️ 风控助手</b><br>波动率: {atr:.2f}<br>止损: <span style='color:#f87171'>${stop_loss:.2f}</span><br>回撤: {dd_curr:.1%} (Max: {dd_max:.1%})</div>", unsafe_allow_html=True)
+                st.markdown(f"""
+                <div class='risk-box'>
+                    <b>🛡️ 风控助手 (ATR动态止损)</b><br>
+                    当前波动率: {atr:.2f}<br>
+                    建议止损位: <span style='color:#f87171;font-weight:bold'>${stop_loss:.2f}</span><br>
+                    <hr style='margin:5px 0; border-color:#7f1d1d'>
+                    当前回撤: {dd_curr:.1%}<br>
+                    52周最大回撤: <b>{dd_max:.1%}</b>
+                </div>
+                """, unsafe_allow_html=True)
                 
                 with st.expander("🧮 凯利计算器"):
                     win_prob = st.slider("胜率", 0, 100, 50)
@@ -917,7 +926,6 @@ if page == "🚀 股票分析":
             if cols[0].button("分析", key=f"a_{sym}"): st.session_state.current_ticker = sym; st.rerun()
             if cols[1].button("删", key=f"d_{sym}"): st.session_state.watchlist.remove(sym); st.rerun()
 
-    # 启动主程序 (在所有函数定义之后)
     render_main_app()
 
 else:
