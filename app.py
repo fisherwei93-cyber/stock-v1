@@ -17,7 +17,7 @@ for key in ['HTTP_PROXY', 'HTTPS_PROXY', 'http_proxy', 'https_proxy']:
 
 ICON_URL = "https://cdn-icons-png.flaticon.com/512/10452/10452449.png"
 
-st.set_page_config(page_title="摩根·V1 (Pro)", layout="wide", page_icon="🦁")
+st.set_page_config(page_title="摩根·V1 (Final)", layout="wide", page_icon="🦁")
 
 # ================= 2. 样式死锁 (UI) =================
 st.markdown(f"""
@@ -144,9 +144,9 @@ def fetch_realtime_price(ticker):
         return {"price": price, "prev": prev, "ext_price": ext_price, "ext_label": ext_label}
     except: return {"price": 0, "prev": 0, "ext_price": None, "ext_label": ""}
 
-# [FIX] V105.3: 全模块熔断+指标计算修复
+# [FIX] V106: 全模块熔断 + 指标计算安全修复
 @st.cache_data(ttl=3600, show_spinner=False)
-def fetch_financial_data_v105_3(ticker):
+def fetch_financial_data_v106(ticker):
     import yfinance as yf
     max_retries = 3; h = pd.DataFrame()
     s = yf.Ticker(ticker)
@@ -158,42 +158,34 @@ def fetch_financial_data_v105_3(ticker):
         except: time.sleep(2**attempt)
     if h.empty: return {"history": pd.DataFrame(), "info": {}, "error": "No Data"}
 
-    # --- Core Indicators ---
+    # --- Core Indicators (Safe) ---
     h['MA20'] = h['Close'].rolling(20).mean()
     h['MA60'] = h['Close'].rolling(60).mean()
     h['MA120'] = h['Close'].rolling(120).mean()
     h['MA200'] = h['Close'].rolling(200).mean()
     
-    # ATR & SuperTrend
     h['TR'] = np.maximum(h['High'] - h['Low'], np.abs(h['High'] - h['Close'].shift(1)))
     h['ATR'] = h['TR'].rolling(10).mean()
     h['ST_Lower'] = ((h['High']+h['Low'])/2) - (3 * h['ATR'])
     
-    # VWAP & FVG
     v = h['Volume'].values; tp = (h['High'] + h['Low'] + h['Close']) / 3
     h['VWAP'] = (tp * v).cumsum() / v.cumsum()
     h['FVG_Bull'] = (h['Low'] > h['High'].shift(2))
     
-    # Z-Score
     h['STD20'] = h['Close'].rolling(20).std()
     h['Z_Score'] = (h['Close'] - h['MA20']) / h['STD20']
     
-    # ADX (Directional Movement)
-    plus_dm = h['High'].diff()
-    minus_dm = h['Low'].diff()
-    plus_dm[plus_dm < 0] = 0
-    minus_dm[minus_dm > 0] = 0
-    minus_dm = minus_dm.abs()
-    
+    # ADX
+    plus_dm = h['High'].diff(); minus_dm = h['Low'].diff()
+    plus_dm[plus_dm < 0] = 0; minus_dm[minus_dm > 0] = 0; minus_dm = minus_dm.abs()
     tr14 = h['TR'].rolling(14).sum()
     plus_di = 100 * (plus_dm.rolling(14).sum() / tr14)
     minus_di = 100 * (minus_dm.rolling(14).sum() / tr14)
     dx = 100 * abs(plus_di - minus_di) / (plus_di + minus_di)
     h['ADX'] = dx.rolling(14).mean()
     
-    # CCI (Optimized calculation)
+    # CCI (Safe Vectorized)
     sma_tp = tp.rolling(20).mean()
-    # Mean Absolute Deviation approximation
     mad = (tp - sma_tp).abs().rolling(20).mean() 
     h['CCI'] = (tp - sma_tp) / (0.015 * mad)
     
@@ -222,7 +214,7 @@ def fetch_financial_data_v105_3(ticker):
         cmp_norm = cmp_df.iloc[start:] / cmp_df.iloc[start] - 1
     except: pass
 
-    # 独立熔断保护 (NVDA Fix)
+    # 独立熔断 (NVDA Fix)
     safe_info = {}; upgrades = None; inst = None; insider = None; fin = None
     try: safe_info = s.info if s.info else {}
     except: pass
@@ -390,7 +382,7 @@ if page == "🚀 股票分析":
     color = "#4ade80" if (p-prev) >= 0 else "#f87171"
     st.markdown(f"<div class='price-container'><div style='color:#9CA3AF; font-size:14px; font-weight:bold;'>{ticker} 实时报价</div><div class='big-price' style='color:{color}'>${p:.2f}</div><div class='price-change' style='background-color:rgba(255,255,255,0.05); color:{color}'>{p-prev:+.2f} ({(p-prev)/prev:+.2%})</div>{f'<div class="ext-price">🌙 {p_data["ext_label"]}: ${p_data["ext_price"]:.2f}</div>' if p_data['ext_price'] else ''}</div>", unsafe_allow_html=True)
     
-    with st.spinner("🦁 正在调取机构底仓数据..."): heavy = fetch_financial_data_v105_3(ticker)
+    with st.spinner("🦁 正在调取机构底仓数据..."): heavy = fetch_financial_data_v106(ticker)
     h, i = heavy['history'], heavy['info']
     
     if not h.empty:
@@ -426,37 +418,42 @@ if page == "🚀 股票分析":
             fig.update_layout(height=400, template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', xaxis_rangeslider_visible=False)
             st.plotly_chart(fig, use_container_width=True)
 
-        # [FIX] V105.3: Explicitly expanded code for Indicators
         with st.expander("📉 进阶指标 (Z-Score/ADX/CCI)", expanded=False):
             try:
-                # 1. Z-Score
                 st.markdown("##### 1. 乖离率 (Z-Score)")
-                fig_z = go.Figure()
-                fig_z.add_trace(go.Scatter(x=h.index, y=h['Z_Score'], line=dict(color='#f472b6', width=1), name='Z-Score'))
+                fig_z = go.Figure(); fig_z.add_trace(go.Scatter(x=h.index, y=h['Z_Score'], line=dict(color='#f472b6', width=1), name='Z-Score'))
                 fig_z.add_hline(y=2, line_dash='dot', line_color='red'); fig_z.add_hline(y=-2, line_dash='dot', line_color='green')
-                fig_z.update_layout(height=200, template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', margin=dict(l=0,r=0,t=10,b=0))
-                st.plotly_chart(fig_z, use_container_width=True)
+                fig_z.update_layout(height=180, template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', margin=dict(l=0,r=0,t=10,b=0)); st.plotly_chart(fig_z, use_container_width=True)
                 st.markdown("<div class='ind-desc'>💡 <b>提示：</b> 红线(>2)代表涨过头，绿线(<-2)代表跌过头</div>", unsafe_allow_html=True)
 
-                # 2. ADX
                 st.markdown("##### 2. 趋势强度 (ADX)")
-                fig_a = go.Figure()
-                fig_a.add_trace(go.Scatter(x=h.index, y=h['ADX'], line=dict(color='#fbbf24', width=1), name='ADX'))
+                fig_a = go.Figure(); fig_a.add_trace(go.Scatter(x=h.index, y=h['ADX'], line=dict(color='#fbbf24', width=1), name='ADX'))
                 fig_a.add_hline(y=25, line_dash='dot', line_color='white')
-                fig_a.update_layout(height=200, template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', margin=dict(l=0,r=0,t=10,b=0))
-                st.plotly_chart(fig_a, use_container_width=True)
+                fig_a.update_layout(height=180, template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', margin=dict(l=0,r=0,t=10,b=0)); st.plotly_chart(fig_a, use_container_width=True)
                 st.markdown("<div class='ind-desc'>💡 <b>提示：</b> >25 代表趋势强劲，<20 代表震荡市</div>", unsafe_allow_html=True)
 
-                # 3. CCI
                 st.markdown("##### 3. 顺势指标 (CCI)")
-                fig_c = go.Figure()
-                fig_c.add_trace(go.Scatter(x=h.index, y=h['CCI'], line=dict(color='#22d3ee', width=1), name='CCI'))
+                fig_c = go.Figure(); fig_c.add_trace(go.Scatter(x=h.index, y=h['CCI'], line=dict(color='#22d3ee', width=1), name='CCI'))
                 fig_c.add_hline(y=100, line_dash='dot', line_color='red'); fig_c.add_hline(y=-100, line_dash='dot', line_color='green')
-                fig_c.update_layout(height=200, template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', margin=dict(l=0,r=0,t=10,b=0))
-                st.plotly_chart(fig_c, use_container_width=True)
+                fig_c.update_layout(height=180, template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', margin=dict(l=0,r=0,t=10,b=0)); st.plotly_chart(fig_c, use_container_width=True)
                 st.markdown("<div class='ind-desc'>💡 <b>提示：</b> >100 超买，<-100 超卖</div>", unsafe_allow_html=True)
-            except Exception as e:
-                st.error(f"指标加载失败: {e}")
+            except Exception as e: st.error(f"指标加载失败: {e}")
+
+        # [RECOVER] Missing RSI Gauge & Radar (From V104)
+        with st.expander("🦁 市场情绪 & 基本面雷达", expanded=False):
+            c1, c2 = st.columns(2)
+            with c1:
+                rsi_val = h['RSI'].iloc[-1]
+                fig_gauge = go.Figure(go.Indicator(mode = "gauge+number", value = rsi_val, title = {'text': "情绪 (RSI)"}, gauge = {'axis': {'range': [0, 100]}, 'bar': {'color': "#3b82f6"}}))
+                fig_gauge.update_layout(height=250, margin=dict(l=20,r=20,t=30,b=20), paper_bgcolor='rgba(0,0,0,0)', font={'color': "white"})
+                st.plotly_chart(fig_gauge, use_container_width=True)
+            with c2:
+                f_data = {'PE': 100 - min(100, i.get('forwardPE', 50) or 50), 'Growth': (i.get('revenueGrowth', 0) or 0) * 100, 'Profit': (i.get('profitMargins', 0) or 0) * 100, 'Short': 100 - min(100, ((i.get('shortPercentOfFloat', 0) or 0) * 100)*2), 'Analyst': (6 - (i.get('recommendationMean', 3) or 3)) * 20, 'ROE': (i.get('returnOnEquity', 0) or 0) * 100}
+                df_radar = pd.DataFrame(dict(r=list(f_data.values()), theta=list(f_data.keys())))
+                fig_radar = px.line_polar(df_radar, r='r', theta='theta', line_close=True)
+                fig_radar.update_traces(fill='toself', line_color='#4ade80')
+                fig_radar.update_layout(height=250, margin=dict(l=30,r=30,t=30,b=30), template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', polar=dict(radialaxis=dict(visible=True, range=[0, 100])))
+                st.plotly_chart(fig_radar, use_container_width=True)
 
     # Core Data & Tabs
     st.subheader("📊 核心数据"); c1, c2, c3 = st.columns(3); safe_i = i if isinstance(i, dict) else {}
@@ -482,30 +479,37 @@ if page == "🚀 股票分析":
             st.subheader("🕴️ 内部交易")
             if heavy.get('insider') is not None:
                 for index, row in heavy['insider'].head(10).iterrows():
-                    # [KEEP] Regex Parsing for Insider Text
-                    trans_text = str(row.get('Text', ''))
-                    action = "❓ 未知"; color = "#9ca3af"
-                    if "Sale" in trans_text or "Sold" in trans_text: action = "🔴 减持"; color = "#ef4444"
-                    elif "Purchase" in trans_text or "Buy" in trans_text: action = "🟢 增持"; color = "#4ade80"
-                    
-                    price_match = re.search(r'price\s\$?(\d+\.?\d*)', trans_text)
+                    trans = str(row.get('Text', '')); act = "🔴 减持" if "Sale" in trans else "🟢 增持"
+                    # [KEEP] Regex Parsing
+                    price_match = re.search(r'price\s\$?(\d+\.?\d*)', trans)
                     price = f"${price_match.group(1)}" if price_match else "-"
-                    
-                    st.markdown(f"<div class='hold-card'><div><div class='hold-name'>{row.get('Insider')}</div><div class='hold-sub'>{row.get('Position')}</div></div><div style='text-align:right'><div style='color:{color};font-weight:bold'>{action} (均价 {price})</div><div class='hold-val'>{row.get('Shares')}股</div></div></div>", unsafe_allow_html=True)
+                    st.markdown(f"<div class='hold-card'><div><div class='hold-name'>{row.get('Insider')}</div><div class='hold-sub'>{row.get('Position')}</div></div><div style='text-align:right'><div style='color:{'#ef4444' if 'Sale' in trans else '#4ade80'};font-weight:bold'>{act} (均价 {price})</div><div class='hold-val'>{row.get('Shares')}股</div></div></div>", unsafe_allow_html=True)
             else: st.info("暂无数据 (Yahoo 限制中)")
 
     with tabs[2]:
+        st.subheader("⚖️ 格雷厄姆合理价")
         eps = safe_i.get('trailingEps', 0); bvps = safe_i.get('bookValue', 0); rt_p = p if p>0 else h['Close'].iloc[-1]
-        if eps and bvps and rt_p: st.metric("格雷厄姆合理价", f"${(22.5 * eps * bvps) ** 0.5:.2f}", f"{( (22.5*eps*bvps)**0.5 - rt_p)/rt_p:.1%} Upside")
-        st.markdown("---"); g = st.slider("预期增长率 %", 0, 50, 15)
-        if eps: st.metric("DCF 估值", f"${(eps * ((1+g/100)**5) * 25) / (1.1**5):.2f}")
+        if eps and bvps and rt_p: st.metric("Graham Number", f"${(22.5 * eps * bvps) ** 0.5:.2f}", f"{( (22.5*eps*bvps)**0.5 - rt_p)/rt_p:.1%} Upside")
+        st.markdown("---"); st.subheader("💰 DCF 模型"); g = st.slider("预期增长率 %", 0, 50, 15)
+        if eps: st.metric("估值", f"${(eps * ((1+g/100)**5) * 25) / (1.1**5):.2f}")
 
     with tabs[3]:
         st.header(f"🎓 {ticker} 深度研报"); st.markdown(f"<div class='report-text'>{safe_i.get('longBusinessSummary', '暂无描述')}</div>", unsafe_allow_html=True)
+        st.markdown("<div class='report-title'>2. 🏰 护城河 (Moat Analysis)</div>")
         gm, roe, peg = safe_i.get('grossMargins', 0), safe_i.get('returnOnEquity', 0), safe_i.get('pegRatio')
-        st.markdown(f"<div class='guru-check'>{'✅' if gm>0.4 else '❌'} 毛利率 > 40% ({fmt_pct(gm)})</div>", unsafe_allow_html=True)
-        st.markdown(f"<div class='guru-check'>{'✅' if roe>0.15 else '❌'} ROE > 15% ({fmt_pct(roe)})</div>", unsafe_allow_html=True)
-        st.markdown(f"<div class='guru-check'>{'✅' if peg and peg < 1 else '❌'} 林奇 PEG < 1.0 (当前 {peg})</div>", unsafe_allow_html=True)
+        c_m1, c_m2 = st.columns(2)
+        c_m1.markdown(f"<div class='score-card'><div class='sc-lbl'>毛利率</div><div class='sc-val' style='color:{'#4ade80' if gm>0.4 else '#f87171'}'>{fmt_pct(gm)}</div></div>", unsafe_allow_html=True)
+        c_m2.markdown(f"<div class='score-card'><div class='sc-lbl'>ROE</div><div class='sc-val' style='color:{'#4ade80' if roe>0.15 else '#f87171'}'>{fmt_pct(roe)}</div></div>", unsafe_allow_html=True)
+        
+        st.markdown("<div class='report-title'>3. 🧘‍♂️ 大师检查清单 (Guru Checklist)</div>", unsafe_allow_html=True)
+        st.markdown(f"<div class='guru-check'>{'✅' if gm>0.4 else '❌'} <b>巴菲特护城河</b>: 毛利率 > 40% (当前 {fmt_pct(gm)})</div>", unsafe_allow_html=True)
+        st.markdown(f"<div class='guru-check'>{'✅' if roe>0.15 else '❌'} <b>芒格优选</b>: ROE > 15% (当前 {fmt_pct(roe)})</div>", unsafe_allow_html=True)
+        st.markdown(f"<div class='guru-check'>{'✅' if peg and peg < 1 else '❌'} <b>林奇法则</b>: PEG < 1.0 (当前 {peg})</div>", unsafe_allow_html=True)
+
+        st.markdown("<div class='report-title'>4. 📞 尽职调查</div>", unsafe_allow_html=True)
+        dd1, dd2 = st.columns(2)
+        dd1.link_button("📄 SEC 10-K", f"https://www.sec.gov/cgi-bin/browse-edgar?CIK={ticker}")
+        dd2.link_button("🗣️ Earnings Call", f"https://www.google.com/search?q={ticker}+earnings+call+transcript")
 
 elif page == "🗓️ 财报地图":
     st.title("🗓️ 全行业财报热力图"); data = fetch_sector_earnings()
@@ -514,9 +518,21 @@ elif page == "🗓️ 财报地图":
     else: st.info("数据更新中...")
 
 else:
+    # [RECOVER] Full Wiki from V104
     st.title("📚 摩根·功能说明书 (Wiki)")
     st.markdown("""
-    <div class='wiki-card'><div class='wiki-title'>1. 视野·交易计划 (Vision L-Box)</div><div class='wiki-text'>核心逻辑：L战法系统。通过均线、前高前低自动计算支撑位(S1)与压力位(R1)。</div></div>
-    <div class='wiki-card'><div class='wiki-title'>2. 神奇九转 (TD Sequential)</div><div class='wiki-text'>原理：寻找衰竭点。红色9上涨力竭，绿色9下跌力竭。</div></div>
-    <div class='wiki-card'><div class='wiki-title'>3. VWAP (机构线)</div><div class='wiki-text'>原理：机构持仓成本。股价在VWAP之上代表机构护盘。</div></div>
+    <div class='wiki-card'><div class='wiki-title'>1. 视野·交易计划 (Vision L-Box)</div><div class='wiki-text'><b>核心逻辑：</b> L战法系统。<br><b>黄框</b>：系统大脑。<br><span class='wiki-tag'>R1/R2</span> 压力位。<br><span class='wiki-tag'>S1/S2</span> 支撑位。</div></div>
+    <div class='wiki-card'><div class='wiki-title'>2. 神奇九转 (TD Sequential)</div><div class='wiki-text'><b>原理：</b> 寻找衰竭点。<br><span style='color:#f87171'><b>红色 9</b></span>：上涨力竭(卖)。<br><span style='color:#4ade80'><b>绿色 9</b></span>：下跌力竭(买)。</div></div>
+    <div class='wiki-card'><div class='wiki-title'>3. VWAP (机构线)</div><div class='wiki-text'><b>原理：</b> 机构持仓成本。<br>股价 > VWAP：机构护盘。<br>股价 < VWAP：机构出货。</div></div>
+    <div class='wiki-card'><div class='wiki-title'>4. 蒙特卡洛预测 (Monte Carlo)</div><div class='wiki-text'><b>原理：</b> 模拟未来30天100种走势。<br><b>悲观底线</b>：95%概率不跌破的止损位。</div></div>
+    <div class='wiki-card'><div class='wiki-title'>5. 六维雷达 (Spider)</div><div class='wiki-text'><b>原理：</b> 公司体检表。面积越大，基本面越完美。</div></div>
+    <div class='wiki-card'><div class='wiki-title'>6. SuperTrend</div><div class='wiki-text'><b>原理：</b> 趋势跟踪。<b>绿色</b>持有，<b>红色</b>空仓。</div></div>
+    <div class='wiki-card'><div class='wiki-title'>7. FVG (缺口)</div><div class='wiki-text'><b>原理：</b> 机构暴力拉升留下的<b>紫色方块</b>。股价常会回调填补。</div></div>
+    <div class='wiki-card'><div class='wiki-title'>8. Z-Score (乖离)</div><div class='wiki-text'><b>原理：</b> 统计学偏差。<br>>2: 涨过头(回调风险) <br><-2: 跌过头(反弹机会)。</div></div>
+    <div class='wiki-card'><div class='wiki-title'>9. 唐奇安通道</div><div class='wiki-text'><b>原理：</b> 海龟交易法。<br>突破上轨买，跌破下轨卖。</div></div>
+    <div class='wiki-card'><div class='wiki-title'>10. Ichimoku (一目均衡)</div><div class='wiki-text'><b>原理：</b> 云带系统。<br>股价在云上为多，云下为空。</div></div>
+    <div class='wiki-card'><div class='wiki-title'>11. ADX (趋势强度)</div><div class='wiki-text'><b>原理：</b> 判断有无趋势。<br>>25: 趋势强劲。<br><20: 震荡市(休息)。</div></div>
+    <div class='wiki-card'><div class='wiki-title'>12. HMA (赫尔均线)</div><div class='wiki-text'><b>原理：</b> 零滞后均线，比MA更快。</div></div>
+    <div class='wiki-card'><div class='wiki-title'>13. 凯利公式</div><div class='wiki-text'><b>原理：</b> 科学仓位管理。告诉你这把牌该下注多少钱。</div></div>
+    <div class='wiki-card'><div class='wiki-title'>14. CCI (顺势指标)</div><div class='wiki-text'><b>原理：</b> 抓极端行情。<br>>100: 超买。<br><-100: 超卖。</div></div>
     """, unsafe_allow_html=True)
