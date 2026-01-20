@@ -17,7 +17,7 @@ for key in ['HTTP_PROXY', 'HTTPS_PROXY', 'http_proxy', 'https_proxy']:
 
 ICON_URL = "https://cdn-icons-png.flaticon.com/512/10452/10452449.png"
 
-st.set_page_config(page_title="摩根·V1 (Final)", layout="wide", page_icon="🦁")
+st.set_page_config(page_title="摩根·V1 (Full)", layout="wide", page_icon="🦁")
 
 # ================= 2. 样式死锁 (UI) =================
 st.markdown(f"""
@@ -112,6 +112,12 @@ st.markdown(f"""
     .report-title {{ font-size: 22px; font-weight: 900; color: #FF9F1C; margin-bottom: 10px; border-left: 5px solid #FF9F1C; padding-left: 10px; }}
     .report-text {{ font-size: 15px; line-height: 1.8; color: #E5E7EB; margin-bottom: 20px; background: #1A1A1A; padding: 15px; border-radius: 8px; }}
     .guru-check {{ display: flex; align-items: center; margin-bottom: 8px; padding: 8px; background: #262626; border-radius: 6px; }}
+    
+    /* Wiki Card */
+    .wiki-card {{ background: #1A1A1A; border: 1px solid #333; border-radius: 8px; padding: 20px; margin-bottom: 20px; }}
+    .wiki-title {{ font-size: 20px; font-weight: bold; color: #FF9F1C; margin-bottom: 15px; border-bottom: 1px solid #444; padding-bottom: 5px; }}
+    .wiki-text {{ font-size: 14px; color: #E5E7EB; line-height: 1.8; margin-bottom: 10px; }}
+    .wiki-tag {{ background: #374151; color: #fff; padding: 2px 6px; border-radius: 4px; font-size: 12px; margin-right: 5px; border: 1px solid #555; }}
 </style>
 """, unsafe_allow_html=True)
 
@@ -150,7 +156,7 @@ def fetch_realtime_price(ticker):
             elif post and abs(post - price) > 0.01: ext_price, ext_label = post, "盘后"
         except: pass
         return {"price": price, "prev": prev, "ext_price": ext_price, "ext_label": ext_label}
-    except: return {"price": 0, "prev": 0}
+    except: return {"price": 0, "prev": 0, "ext_price": None, "ext_label": ""}
 
 @st.cache_data(ttl=3600, show_spinner=False)
 def fetch_heavy_data(ticker):
@@ -214,6 +220,19 @@ def fetch_heavy_data(ticker):
     period = 14
     wma_half = wma(h['Close'], period // 2); wma_full = wma(h['Close'], period)
     h['HMA'] = wma(2 * wma_half - wma_full, int(np.sqrt(period)))
+    
+    # Ichimoku
+    h['Tenkan'] = (h['High'].rolling(9).max() + h['Low'].rolling(9).min()) / 2
+    h['Kijun'] = (h['High'].rolling(26).max() + h['Low'].rolling(26).min()) / 2
+    h['SpanA'] = ((h['Tenkan'] + h['Kijun']) / 2).shift(26)
+    h['SpanB'] = ((h['High'].rolling(52).max() + h['Low'].rolling(52).min()) / 2).shift(26)
+    
+    # WR
+    hh = h['High'].rolling(14).max(); ll = h['Low'].rolling(14).min()
+    h['WR'] = -100 * (hh - h['Close']) / (hh - ll)
+    
+    h['UPPER'] = h['MA20'] + 2*h['STD20']; h['LOWER'] = h['MA20'] - 2*h['STD20']
+    h['DC_Upper'] = h['High'].rolling(20).max(); h['DC_Lower'] = h['Low'].rolling(20).min()
 
     # [Comparison Data]
     cmp_norm = pd.DataFrame()
@@ -230,7 +249,7 @@ def fetch_heavy_data(ticker):
     except: pass
 
     safe_info = s.info if s.info is not None else {}
-    return {"history": h, "info": safe_info, "compare": cmp_norm, "error": None}
+    return {"history": h, "info": safe_info, "compare": cmp_norm, "error": None, "upgrades": s.upgrades_downgrades, "inst": s.institutional_holders, "insider": s.insider_transactions, "fin": s.quarterly_financials, "options": None} # Added back full data fields
 
 @st.cache_data(ttl=43200, show_spinner=False)
 def fetch_sector_earnings():
@@ -268,7 +287,7 @@ def fetch_correlation_data(ticker):
         return data.corrwith(data[ticker]).drop(ticker)
     except: return None
 
-# ================= 4. 逻辑核心 (所有计算函数前置) =================
+# ================= 4. 逻辑核心 =================
 
 def calculate_vision_analysis(df, info):
     if len(df) < 250: return None
@@ -363,6 +382,21 @@ def calculate_quant_score(info, history):
     if rec and rec < 2.0: score += 15; notes.append("机构强推")
     return min(100, max(0, int(score))), " | ".join(notes)
 
+def calculate_max_pain(calls, puts):
+    if calls.empty or puts.empty: return 0
+    strikes = sorted(set(calls['strike']).union(set(puts['strike'])))
+    min_loss = float('inf'); max_pain = 0
+    for s in strikes:
+        loss = 0
+        c_loss = calls[calls['strike'] < s].apply(lambda x: (s - x['strike']) * x['openInterest'], axis=1).sum()
+        p_loss = puts[puts['strike'] > s].apply(lambda x: (x['strike'] - s) * x['openInterest'], axis=1).sum()
+        loss = c_loss + p_loss
+        if loss < min_loss: min_loss = loss; max_pain = s
+    return max_pain
+
+FAMOUS_INSTITUTIONS = {"Vanguard":"先锋", "Blackrock":"贝莱德", "Morgan Stanley":"大摩", "Goldman":"高盛", "Jpmorgan":"小摩", "Citadel":"城堡", "State Street":"道富", "Berkshire":"伯克希尔"}
+RATING_MAP = {"Buy":"买入", "Hold":"持有", "Sell":"卖出", "Strong Buy":"强购", "Overweight":"增持", "Neutral":"中性", "Outperform":"跑赢"}
+
 # ================= 5. 主程序 =================
 if 'watchlist' not in st.session_state: st.session_state.watchlist = ['TSLA', 'NVDA', 'AAPL', 'AMD', 'PLTR']
 if 'current_ticker' not in st.session_state: st.session_state.current_ticker = 'TSLA'
@@ -371,7 +405,6 @@ if 'current_ticker' not in st.session_state: st.session_state.current_ticker = '
 with st.sidebar:
     st.title("🦁 摩根·V1")
     
-    # 1. YouTube
     with st.expander("📺 视频分析", expanded=False):
         yt_url = st.text_input("YouTube Link", placeholder="粘贴URL...")
         if st.button("🚀 提取"):
@@ -383,11 +416,9 @@ with st.sidebar:
                 st.text_area("内容:", f"{txt[:6000]}...", height=150)
             except Exception as e: st.error(f"失败: {e}")
 
-    # 2. Search
     new_ticker = st.text_input("🔍 搜索", "").upper()
     if new_ticker: st.session_state.current_ticker = new_ticker; st.rerun()
 
-    # 3. 财报日历 (New)
     st.markdown("---")
     st.caption("📅 财报雷达")
     earnings_list = fetch_sector_earnings()
@@ -398,7 +429,6 @@ with st.sidebar:
                 st.markdown(f"<div class='earning-card earning-alert'><div class='ec-row'><span class='ec-ticker'>{item['Code']}</span><span class='ec-date'>{item['Date']}</span></div><div class='ec-sector'>{item['Sector']}</div></div>", unsafe_allow_html=True)
         else: st.caption("近期无关注财报")
 
-    # 4. Watchlist
     st.markdown("---")
     st.caption("我的自选")
     for t in st.session_state.watchlist:
@@ -472,7 +502,7 @@ if page == "🚀 股票分析":
             </div>
             """, unsafe_allow_html=True)
 
-        # Comparison Chart (Expander Default Closed)
+        # Comparison Chart
         with st.expander("🆚 跑赢大盘了吗? (点击展开)", expanded=False):
             cmp = heavy.get('compare', pd.DataFrame())
             if not cmp.empty:
@@ -543,6 +573,39 @@ if page == "🚀 股票分析":
             fig3.update_layout(height=800, margin=dict(l=0,r=0,t=10,b=0), template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)')
             st.plotly_chart(fig3, use_container_width=True)
 
+        # [NEW] Insert Radar & Gauge (Revived Features)
+        with st.expander("🦁 市场情绪 & 基本面雷达 (复活版)", expanded=False):
+            c1, c2 = st.columns(2)
+            with c1: # Sentiment Gauge
+                # Simple proxy for Fear/Greed using RSI
+                rsi_val = h['RSI'].iloc[-1]
+                fig_gauge = go.Figure(go.Indicator(
+                    mode = "gauge+number", value = rsi_val,
+                    title = {'text': "市场情绪 (RSI)"},
+                    gauge = {'axis': {'range': [0, 100]},
+                             'bar': {'color': "#3b82f6"},
+                             'steps': [
+                                 {'range': [0, 30], 'color': "rgba(34, 197, 94, 0.3)"},
+                                 {'range': [70, 100], 'color': "rgba(239, 68, 68, 0.3)"}],
+                             'threshold': {'line': {'color': "white", 'width': 4}, 'thickness': 0.75, 'value': rsi_val}}))
+                fig_gauge.update_layout(height=250, margin=dict(l=20,r=20,t=30,b=20), paper_bgcolor='rgba(0,0,0,0)', font={'color': "white"})
+                st.plotly_chart(fig_gauge, use_container_width=True)
+            with c2: # Radar
+                # Standardize values to 0-100 scale for radar
+                f_data = {
+                    'PE': 100 - min(100, i.get('forwardPE', 50) or 50),
+                    'Growth': (i.get('revenueGrowth', 0) or 0) * 100,
+                    'Profit': (i.get('profitMargins', 0) or 0) * 100,
+                    'Short': 100 - min(100, ((i.get('shortPercentOfFloat', 0) or 0) * 100)*2),
+                    'Analyst': (6 - (i.get('recommendationMean', 3) or 3)) * 20,
+                    'ROE': (i.get('returnOnEquity', 0) or 0) * 100
+                }
+                df_radar = pd.DataFrame(dict(r=list(f_data.values()), theta=list(f_data.keys())))
+                fig_radar = px.line_polar(df_radar, r='r', theta='theta', line_close=True)
+                fig_radar.update_traces(fill='toself', line_color='#4ade80')
+                fig_radar.update_layout(height=250, margin=dict(l=30,r=30,t=30,b=30), template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', polar=dict(radialaxis=dict(visible=True, range=[0, 100])))
+                st.plotly_chart(fig_radar, use_container_width=True)
+
     # Core Data
     st.subheader("📊 核心数据")
     c1, c2, c3 = st.columns(3)
@@ -570,14 +633,17 @@ if page == "🚀 股票分析":
         with c1:
             st.subheader("🏦 机构持仓")
             if heavy.get('inst') is not None: st.dataframe(heavy['inst'], use_container_width=True)
+            else: st.info("暂无数据")
         with c2:
             st.subheader("🕴️ 内部交易")
             if heavy.get('insider') is not None: st.dataframe(heavy['insider'], use_container_width=True)
+            else: st.info("暂无数据")
 
     with tabs[2]:
         st.subheader("⚖️ 格雷厄姆合理价")
         eps = safe_i.get('trailingEps', 0); bvps = safe_i.get('bookValue', 0)
-        if eps is not None and bvps is not None and eps > 0 and bvps > 0 and rt_price > 0:
+        rt_price = p if p>0 else h['Close'].iloc[-1] if not h.empty else 0
+        if eps and bvps and eps > 0 and bvps > 0 and rt_price > 0:
             graham = (22.5 * eps * bvps) ** 0.5
             upside = (graham - rt_price) / rt_price
             st.metric("Graham Number", f"${graham:.2f}", f"{upside:.1%} Upside")
@@ -621,4 +687,16 @@ else:
     st.markdown("""
     <div class='wiki-card'><div class='wiki-title'>1. 视野·交易计划 (Vision L-Box)</div><div class='wiki-text'><b>核心逻辑：</b> L战法系统。<br><b>黄框</b>：系统大脑。<br><span class='wiki-tag'>R1/R2</span> 压力位。<br><span class='wiki-tag'>S1/S2</span> 支撑位。</div></div>
     <div class='wiki-card'><div class='wiki-title'>2. 神奇九转 (TD Sequential)</div><div class='wiki-text'><b>原理：</b> 寻找衰竭点。<br><span style='color:#f87171'><b>红色 9</b></span>：上涨力竭(卖)。<br><span style='color:#4ade80'><b>绿色 9</b></span>：下跌力竭(买)。</div></div>
+    <div class='wiki-card'><div class='wiki-title'>3. VWAP (机构线)</div><div class='wiki-text'><b>原理：</b> 机构持仓成本。<br>股价 > VWAP：机构护盘。<br>股价 < VWAP：机构出货。</div></div>
+    <div class='wiki-card'><div class='wiki-title'>4. 蒙特卡洛预测 (Monte Carlo)</div><div class='wiki-text'><b>原理：</b> 模拟未来30天100种走势。<br><b>悲观底线</b>：95%概率不跌破的止损位。</div></div>
+    <div class='wiki-card'><div class='wiki-title'>5. 六维雷达 (Spider)</div><div class='wiki-text'><b>原理：</b> 公司体检表。面积越大，基本面越完美。</div></div>
+    <div class='wiki-card'><div class='wiki-title'>6. SuperTrend</div><div class='wiki-text'><b>原理：</b> 趋势跟踪。<b>绿色</b>持有，<b>红色</b>空仓。</div></div>
+    <div class='wiki-card'><div class='wiki-title'>7. FVG (缺口)</div><div class='wiki-text'><b>原理：</b> 机构暴力拉升留下的<b>紫色方块</b>。股价常会回调填补。</div></div>
+    <div class='wiki-card'><div class='wiki-title'>8. Z-Score (乖离)</div><div class='wiki-text'><b>原理：</b> 统计学偏差。<br>>2: 涨过头(回调风险) <br><-2: 跌过头(反弹机会)。</div></div>
+    <div class='wiki-card'><div class='wiki-title'>9. 唐奇安通道</div><div class='wiki-text'><b>原理：</b> 海龟交易法。<br>突破上轨买，跌破下轨卖。</div></div>
+    <div class='wiki-card'><div class='wiki-title'>10. Ichimoku (一目均衡)</div><div class='wiki-text'><b>原理：</b> 云带系统。<br>股价在云上为多，云下为空。</div></div>
+    <div class='wiki-card'><div class='wiki-title'>11. ADX (趋势强度)</div><div class='wiki-text'><b>原理：</b> 判断有无趋势。<br>>25: 趋势强劲。<br><20: 震荡市(休息)。</div></div>
+    <div class='wiki-card'><div class='wiki-title'>12. HMA (赫尔均线)</div><div class='wiki-text'><b>原理：</b> 零滞后均线，比MA更快。</div></div>
+    <div class='wiki-card'><div class='wiki-title'>13. 凯利公式</div><div class='wiki-text'><b>原理：</b> 科学仓位管理。告诉你这把牌该下注多少钱。</div></div>
+    <div class='wiki-card'><div class='wiki-title'>14. CCI (顺势指标)</div><div class='wiki-text'><b>原理：</b> 抓极端行情。<br>>100: 超买。<br><-100: 超卖。</div></div>
     """, unsafe_allow_html=True)
