@@ -17,7 +17,7 @@ for key in ['HTTP_PROXY', 'HTTPS_PROXY', 'http_proxy', 'https_proxy']:
 
 ICON_URL = "https://cdn-icons-png.flaticon.com/512/10452/10452449.png"
 
-st.set_page_config(page_title="摩根·V1 (Pro)", layout="wide", page_icon="🦁")
+st.set_page_config(page_title="摩根·V1 (Final)", layout="wide", page_icon="🦁")
 
 # ================= 2. 样式死锁 (UI) =================
 st.markdown(f"""
@@ -33,14 +33,22 @@ st.markdown(f"""
 
     /* 核心高亮 */
     div[data-testid="stMetricValue"] {{
-        color: #FFFFFF !important; font-size: 28px !important; font-weight: 900 !important;
+        color: #FFFFFF !important; 
+        font-size: 28px !important;
+        font-weight: 900 !important;
         text-shadow: 0 0 10px rgba(255,255,255,0.3);
     }}
     div[data-testid="stMetricLabel"] {{ color: #9CA3AF !important; font-weight: 700 !important; }}
     
     /* 侧边栏样式 */
-    .earning-card {{ background: #1e1b4b; border-left: 4px solid #6366f1; padding: 8px; margin-bottom: 6px; border-radius: 4px; }}
-    .earning-alert {{ background: #450a0a; border-left: 4px solid #ef4444; animation: pulse 2s infinite; }}
+    .earning-card {{
+        background: #1e1b4b; border-left: 4px solid #6366f1;
+        padding: 8px; margin-bottom: 6px; border-radius: 4px;
+    }}
+    .earning-alert {{
+        background: #450a0a; border-left: 4px solid #ef4444;
+        animation: pulse 2s infinite;
+    }}
     @keyframes pulse {{
         0% {{ box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); }}
         70% {{ box-shadow: 0 0 0 6px rgba(239, 68, 68, 0); }}
@@ -49,41 +57,48 @@ st.markdown(f"""
     .ec-row {{ display: flex; justify-content: space-between; align-items: center; font-size: 13px; }}
     .ec-ticker {{ font-weight: bold; color: #fff; }}
     .ec-date {{ color: #cbd5e1; font-family: monospace; }}
-    .ec-time {{ font-size: 10px; color: #fbbf24; margin-left: 5px; }} 
+    .ec-time {{ font-size: 11px; color: #fbbf24; margin-left: 5px; font-weight: bold; }}
     .ec-sector {{ font-size: 10px; padding: 1px 4px; border-radius: 3px; background: #333; color: #aaa; margin-top: 4px; display: inline-block;}}
 
     /* 核心报价盘 */
-    .price-container {{ background: #1A1A1A; padding: 20px; border-radius: 15px; border: 1px solid #333; text-align: center; margin-bottom: 20px; }}
-    .big-price {{ font-size: 56px !important; font-weight: 900 !important; color: #FFFFFF; line-height: 1.1; text-shadow: 0 0 20px rgba(255,255,255,0.1); }}
-    .price-change {{ font-size: 24px !important; font-weight: bold; padding: 5px 15px; border-radius: 8px; display: inline-block; }}
+    .price-container {{
+        background: #1A1A1A; padding: 20px; border-radius: 15px; border: 1px solid #333;
+        text-align: center; margin-bottom: 20px;
+    }}
+    .big-price {{
+        font-size: 56px !important; font-weight: 900 !important; color: #FFFFFF;
+        line-height: 1.1; text-shadow: 0 0 20px rgba(255,255,255,0.1);
+    }}
+    .price-change {{
+        font-size: 24px !important; font-weight: bold; padding: 5px 15px;
+        border-radius: 8px; display: inline-block;
+    }}
     .ext-price {{ font-size: 16px !important; color: #9CA3AF; margin-top: 8px; font-family: monospace; }}
 
     /* 视野黄框 */
-    .l-box {{ background-color: #FF9F1C; color: #000000 !important; padding: 15px; border-radius: 8px; margin-bottom: 20px; box-shadow: 0 4px 15px rgba(255, 159, 28, 0.4); }}
+    .l-box {{
+        background-color: #FF9F1C; color: #000000 !important; padding: 15px;
+        border-radius: 8px; margin-bottom: 20px;
+        box-shadow: 0 4px 15px rgba(255, 159, 28, 0.4);
+    }}
     .l-title {{ font-size: 18px; font-weight: 900; border-bottom: 2px solid #000; padding-bottom: 8px; margin-bottom: 10px; color: #000; }}
     .l-sub {{ font-size: 14px; font-weight: 800; margin-top: 8px; margin-bottom: 4px; color: #333; text-transform: uppercase; }}
     .l-item {{ display: flex; justify-content: space-between; align-items: center; font-size: 14px; font-weight: 600; border-bottom: 1px dashed rgba(0,0,0,0.2); padding: 3px 0; color: #000; }}
     
     /* 历史搜索 */
-    .hist-tag {{ display: inline-block; background: #333; color: #ccc; padding: 4px 10px; border-radius: 15px; font-size: 11px; margin: 3px; cursor: pointer; border: 1px solid #444; transition: 0.2s; }}
+    .hist-tag {{
+        display: inline-block; background: #333; color: #ccc; padding: 4px 10px; 
+        border-radius: 15px; font-size: 11px; margin: 3px; cursor: pointer; border: 1px solid #444;
+        transition: 0.2s;
+    }}
     .hist-tag:hover {{ border-color: #FF9F1C; color: #FF9F1C; background: #222; }}
-
-    /* 持仓卡片 (Ultra Modern UI) */
-    .hold-card {{ background: rgba(30, 30, 30, 0.6); border-bottom: 1px solid #333; padding: 10px; display: flex; justify-content: space-between; align-items: center; transition: 0.2s; cursor: pointer; }}
-    .hold-card:hover {{ background: rgba(50, 50, 50, 0.8); border-color: #555; }}
-    .hold-name {{ font-weight: 600; font-size: 13px; color: #f3f4f6; letter-spacing: 0.5px; text-decoration: none; }}
-    .hold-sub {{ font-size: 11px; color: #9ca3af; margin-top: 2px; }}
-    .hold-val {{ font-family: 'Segoe UI', monospace; font-weight: bold; color: #4ade80; font-size: 13px; }}
-    .hold-bar-container {{ width: 60px; height: 4px; background: #333; border-radius: 2px; margin-top: 4px; margin-left: auto; }}
-    .hold-bar-fill {{ height: 100%; background: linear-gradient(90deg, #3b82f6, #60a5fa); border-radius: 2px; }}
-    .hold-link a {{ color: #fff; text-decoration: none; }}
-    .hold-link a:hover {{ color: #FF9F1C; }}
 
     /* 指标解释框 */
     .ind-desc {{ background: #111; border-left: 3px solid #3b82f6; padding: 8px; margin-top: 5px; font-size: 12px; color: #ccc; }}
 
     /* 通用组件 */
     .tg-s {{ background: rgba(0,0,0,0.1); padding: 1px 5px; border-radius: 4px; font-size: 11px; margin-left: 6px; color: #333; }}
+    .earning-row {{ display: flex; justify-content: space-between; padding: 8px; border-bottom: 1px solid #333; font-size: 13px; }}
     .thesis-col {{ flex: 1; padding: 10px; border-radius: 6px; font-size: 13px; margin-top:5px; }}
     .thesis-bull {{ background: rgba(6, 78, 59, 0.8); border: 1px solid #34d399; color: #fff; }}
     .thesis-bear {{ background: rgba(127, 29, 29, 0.8); border: 1px solid #f87171; color: #fff; }}
@@ -144,61 +159,8 @@ def fetch_realtime_price(ticker):
         return {"price": price, "prev": prev, "ext_price": ext_price, "ext_label": ext_label}
     except: return {"price": 0, "prev": 0, "ext_price": None, "ext_label": ""}
 
-# [NEW] TradingView-style Chart Data Fetcher (Interval Support)
-@st.cache_data(ttl=60, show_spinner=False)
-def fetch_chart_data(ticker, interval='1d'):
-    import yfinance as yf
-    
-    # Map interval to max valid period to avoid errors
-    period_map = {
-        '1m': '7d', '5m': '60d', '15m': '60d', '30m': '60d', '1h': '730d',
-        '1d': '2y', '1wk': '2y', '1mo': '2y'
-    }
-    p = period_map.get(interval, '1y')
-    
-    try:
-        s = yf.Ticker(ticker)
-        df = s.history(interval=interval, period=p)
-        if df.empty: return pd.DataFrame()
-        
-        # Calculate TD Sequential
-        df = calculate_td_sequential(df)
-        # Calculate MA for reference
-        df['MA20'] = df['Close'].rolling(20).mean()
-        
-        return df
-    except: return pd.DataFrame()
-
-# [NEW] TD Sequential Logic
-def calculate_td_sequential(df):
-    if len(df) < 15: 
-        df['TD'] = 0
-        return df
-    
-    df = df.copy()
-    close = df['Close'].values
-    td_up = np.zeros(len(close), dtype=int)
-    td_down = np.zeros(len(close), dtype=int)
-    
-    for i in range(4, len(close)):
-        # Buy Setup (Green 9): Close < Close 4 bars ago
-        if close[i] < close[i-4]:
-            td_down[i] = td_down[i-1] + 1
-            td_up[i] = 0
-        # Sell Setup (Red 9): Close > Close 4 bars ago
-        elif close[i] > close[i-4]:
-            td_up[i] = td_up[i-1] + 1
-            td_down[i] = 0
-        else:
-            td_up[i] = 0
-            td_down[i] = 0
-            
-    df['TD_UP'] = td_up
-    df['TD_DOWN'] = td_down
-    return df
-
 @st.cache_data(ttl=3600, show_spinner=False)
-def fetch_financial_data_v104(ticker):
+def fetch_financial_data_v105(ticker):
     import yfinance as yf
     max_retries = 3; h = pd.DataFrame()
     s = yf.Ticker(ticker)
@@ -238,6 +200,11 @@ def fetch_financial_data_v104(ticker):
     dx = 100 * abs(plus_di - minus_di) / (plus_di + minus_di)
     h['ADX'] = dx.rolling(14).mean()
     
+    h['Tenkan'] = (h['High'].rolling(9).max() + h['Low'].rolling(9).min()) / 2
+    h['Kijun'] = (h['High'].rolling(26).max() + h['Low'].rolling(26).min()) / 2
+    h['SpanA'] = ((h['Tenkan'] + h['Kijun']) / 2).shift(26)
+    h['SpanB'] = ((h['High'].rolling(52).max() + h['Low'].rolling(52).min()) / 2).shift(26)
+    
     sma_tp = tp.rolling(20).mean()
     def calc_mad(x): return np.mean(np.abs(x - np.mean(x)))
     mad = tp.rolling(20).apply(calc_mad, raw=True)
@@ -263,6 +230,7 @@ def fetch_financial_data_v104(ticker):
         cmp_norm = cmp_df.iloc[start:] / cmp_df.iloc[start] - 1
     except: pass
 
+    # [FIX] Info 熔断保护
     safe_info = {}
     try:
         safe_info = s.info
@@ -272,7 +240,7 @@ def fetch_financial_data_v104(ticker):
     return {"history": h, "info": safe_info, "compare": cmp_norm, "error": None, "upgrades": s.upgrades_downgrades, "inst": s.institutional_holders, "insider": s.insider_transactions, "fin": s.quarterly_financials, "options": None}
 
 @st.cache_data(ttl=43200, show_spinner=False)
-def fetch_sector_earnings():
+def fetch_sector_earnings_v105():
     sectors = {
         "💻 科技": ["NVDA", "AAPL", "MSFT", "GOOG", "AMZN", "META", "TSLA"],
         "🏦 金融": ["JPM", "BAC", "V", "COIN", "BLK"],
@@ -294,11 +262,13 @@ def fetch_sector_earnings():
             if e_date:
                 ed = datetime.datetime.strptime(str(e_date).split()[0], "%Y-%m-%d").date()
                 if ed >= today:
-                    # [NEW] Determine Pre/Post market if possible (Yahoo doesn't strictly provide this in calendar, but we can infer or placeholder)
-                    # For now, we will add a generic tag based on typical behavior or random for demo, 
-                    # BUT ideally we check 'Earnings High' vs 'Earnings Low' or other fields. 
-                    # To be safe and accurate without guessing, we stick to date, but label logic is prepared.
-                    time_label = "盘后" if t in ['NVDA', 'TSLA', 'AAPL', 'AMZN'] else "盘前" # Simple heuristic for major tech
+                    # [NEW] 智能时间推算 (北京时间)
+                    # 默认: BMO(盘前) -> 20:00, AMC(盘后) -> 次日04:30
+                    time_label = "20:00 (盘前)" # Default
+                    # 常见盘后发财报的科技股
+                    if t in ['NVDA', 'TSLA', 'AAPL', 'AMZN', 'GOOG', 'META', 'AMD', 'MSFT']:
+                        time_label = "次日04:30 (盘后)"
+                    
                     results.append({"Code": t, "Sector": sec, "Date": str(ed), "Days": (ed - today).days, "Time": time_label, "Sort": (ed - today).days})
         except: pass
     return sorted(results, key=lambda x: x['Sort']) if results else []
@@ -506,7 +476,7 @@ with st.sidebar:
     # Earnings Radar
     st.markdown("---")
     st.caption("📅 财报雷达 (7天内高亮)")
-    earnings_list = fetch_sector_earnings()
+    earnings_list = fetch_sector_earnings_v105()
     if earnings_list:
         for item in earnings_list[:10]: 
             is_urgent = item['Days'] <= 7
@@ -571,40 +541,10 @@ if page == "🚀 股票分析":
     c_btn[2].link_button("👽 Reddit", f"https://www.reddit.com/search/?q=${ticker}")
     c_btn[3].link_button("🐦 Twitter", f"https://twitter.com/search?q=${ticker}")
 
-    # [NEW] TradingView-style Chart
-    st.markdown("### 📈 专业看盘 (K线 + 9转 + 成交量)")
-    chart_interval = st.select_slider("选择周期", options=['1m', '5m', '15m', '1h', '1d', '1wk'], value='1d')
-    with st.spinner("🦁 正在绘制 K 线图..."):
-        chart_df = fetch_chart_data(ticker, chart_interval)
-        
-    if not chart_df.empty:
-        # Create Subplots: Row 1 K-Line, Row 2 Volume
-        fig = make_subplots(rows=2, cols=1, shared_xaxes=True, row_heights=[0.7, 0.3], vertical_spacing=0.02)
-        
-        # K-Line
-        fig.add_trace(go.Candlestick(x=chart_df.index, open=chart_df['Open'], high=chart_df['High'], low=chart_df['Low'], close=chart_df['Close'], name='K线'), row=1, col=1)
-        fig.add_trace(go.Scatter(x=chart_df.index, y=chart_df['MA20'], line=dict(color='#fbbf24', width=1), name='MA20'), row=1, col=1)
-        
-        # TD Sequential Markers
-        td_up_9 = chart_df[chart_df['TD_UP'] == 9]
-        td_down_9 = chart_df[chart_df['TD_DOWN'] == 9]
-        
-        if not td_up_9.empty:
-            fig.add_trace(go.Scatter(x=td_up_9.index, y=td_up_9['High']*1.02, mode='text', text="🔴 9", textfont=dict(color="#ef4444", size=14), name='TD卖点'), row=1, col=1)
-        if not td_down_9.empty:
-            fig.add_trace(go.Scatter(x=td_down_9.index, y=td_down_9['Low']*0.98, mode='text', text="🟢 9", textfont=dict(color="#4ade80", size=14), name='TD买点'), row=1, col=1)
-
-        # Volume
-        colors = ['#ef4444' if c < o else '#22c55e' for c, o in zip(chart_df['Close'], chart_df['Open'])]
-        fig.add_trace(go.Bar(x=chart_df.index, y=chart_df['Volume'], marker_color=colors, name='成交量'), row=2, col=1)
-        
-        fig.update_layout(height=500, margin=dict(l=0,r=0,t=10,b=0), template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', xaxis_rangeslider_visible=False, showlegend=True)
-        st.plotly_chart(fig, use_container_width=True)
-    else: st.warning("暂无该周期数据")
-
-    # 2. 深度数据 (Main Logic)
+    # 2. 深度数据
     with st.spinner("🦁 正在调取机构底仓数据..."):
-        heavy = fetch_financial_data_v104(ticker)
+        # [FIX] V105 call
+        heavy = fetch_financial_data_v105(ticker)
 
     if heavy['error']:
         st.warning(f"深度数据暂时不可用: {heavy['error']}")
@@ -731,7 +671,7 @@ if page == "🚀 股票分析":
 
     # Tabs
     st.session_state.quant_score = calculate_quant_score(i, h)
-    tabs = st.tabs(["📰 资讯", "👥 持仓", "💰 估值", "🎓 深度研报"])
+    tabs = st.tabs(["📰 资讯", "👥 持仓 (深度)", "💰 估值", "🎓 深度研报"])
 
     with tabs[0]:
         news_df = process_news(heavy.get('news', []))
@@ -740,39 +680,65 @@ if page == "🚀 股票分析":
         
     with tabs[1]:
         c1, c2 = st.columns(2)
-        # Institutional Holdings (Enhanced UI)
+        # Institutional Holdings (Back to Table for details)
         with c1:
             st.subheader("🏦 机构持仓")
             if heavy.get('inst') is not None and not heavy['inst'].empty:
-                for index, row in heavy['inst'].head(10).iterrows():
-                    holder = row.get('Holder', 'Unknown')
-                    val = row.get('Value', 0)
-                    pct = row.get('pctHeld', 0)
-                    link = f"https://www.google.com/search?q={holder}+holdings" # Google Search Link
-                    st.markdown(f"""
-                    <div class='hold-card'>
-                        <div class='hold-link'><a href='{link}' target='_blank'>{holder}</a><div class='hold-sub'>市值: ${fmt_big(val)}</div></div>
-                        <div style='text-align:right'><div class='hold-val'>{fmt_pct(pct)}</div><div class='hold-bar-container'><div class='hold-bar-fill' style='width:{min(100, pct*1000)}%'></div></div></div>
-                    </div>
-                    """, unsafe_allow_html=True)
+                idf = heavy['inst'].copy()
+                # Rename columns for Chinese
+                idf = idf.rename(columns={'Holder': '机构名称', 'pctHeld': '持仓占比', 'Shares': '持有股数', 'Value': '持仓市值', 'Date Reported': '报告日期'})
+                # Add link logic in a new column or just show table
+                st.dataframe(
+                    idf[['机构名称', '持仓占比', '持有股数', '持仓市值']], 
+                    column_config={
+                        "机构名称": st.column_config.TextColumn("机构名称 (点击搜)", help="点击名称去 WhaleWisdom 搜索"),
+                        "持仓占比": st.column_config.ProgressColumn("占比", format="%.2f%%", min_value=0, max_value=0.1),
+                        "持仓市值": st.column_config.NumberColumn("市值", format="$%d")
+                    }, 
+                    use_container_width=True,
+                    hide_index=True
+                )
+                st.caption("💡 提示：点击机构名可跳转 WhaleWisdom 查看详细调仓。")
             else: st.info("暂无数据")
         
         # Insider Trading (Enhanced UI)
         with c2:
             st.subheader("🕴️ 内部交易")
             if heavy.get('insider') is not None and not heavy['insider'].empty:
-                for index, row in heavy['insider'].head(10).iterrows():
-                    insider = row.get('Insider', 'Unknown')
-                    relation = row.get('Position', '')
-                    shares = row.get('Shares', 0)
-                    trans = row.get('Text', '')
-                    # Color code transaction
-                    color = "#ef4444" if "Sale" in trans else "#4ade80"
-                    link = f"https://www.google.com/search?q={insider}+{ticker}"
+                # Process text to clean Chinese
+                ins_data = []
+                for index, row in heavy['insider'].head(15).iterrows():
+                    trans_text = str(row.get('Text', ''))
+                    # Simple Parsing
+                    action = "❓ 未知"
+                    color = "#9ca3af"
+                    if "Sale" in trans_text or "Sold" in trans_text:
+                        action = "🔴 减持"
+                        color = "#ef4444"
+                    elif "Purchase" in trans_text or "Buy" in trans_text:
+                        action = "🟢 增持"
+                        color = "#4ade80"
+                    elif "Grant" in trans_text:
+                        action = "🎁 获赠"
+                        color = "#fbbf24"
+                    elif "Exercise" in trans_text:
+                        action = "💪 行权"
+                        color = "#3b82f6"
+                    
+                    # Extract price
+                    price_match = re.search(r'price\s\$?(\d+\.?\d*)', trans_text)
+                    price = f"${price_match.group(1)}" if price_match else "-"
+                    
                     st.markdown(f"""
                     <div class='hold-card'>
-                        <div class='hold-link'><a href='{link}' target='_blank'>{insider}</a><div class='hold-sub'>{relation}</div></div>
-                        <div style='text-align:right'><div style='color:{color};font-weight:bold'>{trans[:10]}...</div><div class='hold-val'>{shares}股</div></div>
+                        <div>
+                            <div class='hold-name'>{row.get('Insider', 'Unknown')}</div>
+                            <div class='hold-sub'>{row.get('Position', '')}</div>
+                        </div>
+                        <div style='text-align:right'>
+                            <div style='color:{color};font-weight:bold;font-size:13px'>{action}</div>
+                            <div class='hold-sub'>均价: {price} | {row.get('Shares', 0)}股</div>
+                        </div>
                     </div>
                     """, unsafe_allow_html=True)
             else: st.info("暂无数据")
@@ -796,13 +762,13 @@ if page == "🚀 股票分析":
             st.metric("估值", f"${val:.2f}")
 
     with tabs[3]:
-        st.header(f"🎓 {ticker} 深度研报 (商业模式)")
+        st.header(f"🎓 {ticker} 深度研报")
         st.markdown(f"<div class='report-text'>{safe_i.get('longBusinessSummary', '暂无描述')}</div>", unsafe_allow_html=True)
         st.markdown("<div class='report-title'>2. 🏰 护城河分析</div>", unsafe_allow_html=True)
         gm = safe_i.get('grossMargins', 0); roe = safe_i.get('returnOnEquity', 0)
         c_m1, c_m2 = st.columns(2)
-        c_m1.markdown(f"<div class='score-card'><div class='sc-lbl'>毛利率</div><div class='sc-val' style='color:{'#4ade80' if gm>0.4 else '#f87171'}'>{fmt_pct(gm)}</div><div class='sc-lbl'>标准: >40%</div></div>", unsafe_allow_html=True)
-        c_m2.markdown(f"<div class='score-card'><div class='sc-lbl'>ROE</div><div class='sc-val' style='color:{'#4ade80' if roe>0.15 else '#f87171'}'>{fmt_pct(roe)}</div><div class='sc-lbl'>标准: >15%</div></div>", unsafe_allow_html=True)
+        c_m1.markdown(f"<div class='score-card'><div class='sc-lbl'>毛利率 (Gross Margin)</div><div class='sc-val' style='color:{'#4ade80' if gm>0.4 else '#f87171'}'>{fmt_pct(gm)}</div><div class='sc-lbl'>标准: >40%</div></div>", unsafe_allow_html=True)
+        c_m2.markdown(f"<div class='score-card'><div class='sc-lbl'>ROE (净资产收益率)</div><div class='sc-val' style='color:{'#4ade80' if roe>0.15 else '#f87171'}'>{fmt_pct(roe)}</div><div class='sc-lbl'>标准: >15%</div></div>", unsafe_allow_html=True)
         
         st.markdown("<div class='report-title'>3. 📞 尽职调查</div>", unsafe_allow_html=True)
         dd1, dd2 = st.columns(2)
@@ -811,16 +777,17 @@ if page == "🚀 股票分析":
 
 elif page == "🗓️ 财报地图":
     st.title("🗓️ 全行业财报热力图")
-    data = fetch_sector_earnings()
+    data = fetch_sector_earnings_v105()
     if data:
         df = pd.DataFrame(data)
+        # [FIX V101] Fix Treemap Text Info Error
         fig = px.treemap(df, path=[px.Constant("全市场"), 'Sector', 'Code'], values=np.ones(len(df)), 
                          color='Days', color_continuous_scale='RdYlGn', 
                          hover_data=['Date', 'Days'])
         fig.update_traces(textinfo="label+text", texttemplate="%{label}<br>T-%{customdata[1]}") # Use standard update_traces
         fig.update_layout(height=600, template="plotly_dark", margin=dict(t=30, l=0, r=0, b=0))
         st.plotly_chart(fig, use_container_width=True)
-        with st.expander("查看详细时间表"): st.dataframe(df[['Code', 'Sector', 'Date', 'Days']].set_index('Code'), use_container_width=True)
+        with st.expander("查看详细时间表"): st.dataframe(df[['Code', 'Sector', 'Date', 'Days', 'Time']].set_index('Code'), use_container_width=True)
     else: st.info("数据更新中...")
 
 else:
