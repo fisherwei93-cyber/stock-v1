@@ -17,7 +17,7 @@ for key in ['HTTP_PROXY', 'HTTPS_PROXY', 'http_proxy', 'https_proxy']:
 
 ICON_URL = "https://cdn-icons-png.flaticon.com/512/10452/10452449.png"
 
-st.set_page_config(page_title="摩根·V1 (Pro)", layout="wide", page_icon="🦁")
+st.set_page_config(page_title="摩根·V1 (Lite)", layout="wide", page_icon="🦁")
 
 # ================= 2. 样式死锁 (UI) =================
 st.markdown(f"""
@@ -49,7 +49,7 @@ st.markdown(f"""
     .ec-row {{ display: flex; justify-content: space-between; align-items: center; font-size: 13px; }}
     .ec-ticker {{ font-weight: bold; color: #fff; }}
     .ec-date {{ color: #cbd5e1; font-family: monospace; }}
-    .ec-time {{ font-size: 10px; color: #fbbf24; margin-left: 5px; }} 
+    .ec-time {{ font-size: 11px; color: #fbbf24; margin-left: 5px; font-weight: bold; }}
     .ec-sector {{ font-size: 10px; padding: 1px 4px; border-radius: 3px; background: #333; color: #aaa; margin-top: 4px; display: inline-block;}}
 
     /* 核心报价盘 */
@@ -144,64 +144,13 @@ def fetch_realtime_price(ticker):
         return {"price": price, "prev": prev, "ext_price": ext_price, "ext_label": ext_label}
     except: return {"price": 0, "prev": 0, "ext_price": None, "ext_label": ""}
 
-# [NEW] TradingView-style Chart Data Fetcher (Interval Support)
-@st.cache_data(ttl=60, show_spinner=False)
-def fetch_chart_data(ticker, interval='1d'):
-    import yfinance as yf
-    
-    # Map interval to max valid period to avoid errors
-    period_map = {
-        '1m': '7d', '5m': '60d', '15m': '60d', '30m': '60d', '1h': '730d',
-        '1d': '2y', '1wk': '2y', '1mo': '2y'
-    }
-    p = period_map.get(interval, '1y')
-    
-    try:
-        s = yf.Ticker(ticker)
-        df = s.history(interval=interval, period=p)
-        if df.empty: return pd.DataFrame()
-        
-        # Calculate TD Sequential
-        df = calculate_td_sequential(df)
-        # Calculate MA for reference
-        df['MA20'] = df['Close'].rolling(20).mean()
-        
-        return df
-    except: return pd.DataFrame()
-
-# [NEW] TD Sequential Logic
-def calculate_td_sequential(df):
-    if len(df) < 15: 
-        df['TD'] = 0
-        return df
-    
-    df = df.copy()
-    close = df['Close'].values
-    td_up = np.zeros(len(close), dtype=int)
-    td_down = np.zeros(len(close), dtype=int)
-    
-    for i in range(4, len(close)):
-        # Buy Setup (Green 9): Close < Close 4 bars ago
-        if close[i] < close[i-4]:
-            td_down[i] = td_down[i-1] + 1
-            td_up[i] = 0
-        # Sell Setup (Red 9): Close > Close 4 bars ago
-        elif close[i] > close[i-4]:
-            td_up[i] = td_up[i-1] + 1
-            td_down[i] = 0
-        else:
-            td_up[i] = 0
-            td_down[i] = 0
-            
-    df['TD_UP'] = td_up
-    df['TD_DOWN'] = td_down
-    return df
-
+# [FIX] Reverted to V104 standard fetching (NO SESSION) to fix "No Data" error
 @st.cache_data(ttl=3600, show_spinner=False)
-def fetch_financial_data_v104(ticker):
+def fetch_financial_data_v106(ticker):
     import yfinance as yf
     max_retries = 3; h = pd.DataFrame()
-    s = yf.Ticker(ticker)
+    s = yf.Ticker(ticker) # STANDARD CALL
+    
     for attempt in range(max_retries):
         try:
             h = s.history(period="2y")
@@ -229,7 +178,6 @@ def fetch_financial_data_v104(ticker):
     wma_half = wma(h['Close'], period // 2); wma_full = wma(h['Close'], period)
     h['HMA'] = wma(2 * wma_half - wma_full, int(np.sqrt(period)))
     
-    # Advanced
     plus_dm = h['High'].diff(); minus_dm = h['Low'].diff()
     plus_dm[plus_dm < 0] = 0; minus_dm[minus_dm > 0] = 0; minus_dm = minus_dm.abs()
     tr14 = h['TR'].rolling(14).sum()
@@ -263,6 +211,7 @@ def fetch_financial_data_v104(ticker):
         cmp_norm = cmp_df.iloc[start:] / cmp_df.iloc[start] - 1
     except: pass
 
+    # V104 Original Fetching Style (Safe)
     safe_info = {}
     try:
         safe_info = s.info
@@ -294,11 +243,11 @@ def fetch_sector_earnings():
             if e_date:
                 ed = datetime.datetime.strptime(str(e_date).split()[0], "%Y-%m-%d").date()
                 if ed >= today:
-                    # [NEW] Determine Pre/Post market if possible (Yahoo doesn't strictly provide this in calendar, but we can infer or placeholder)
-                    # For now, we will add a generic tag based on typical behavior or random for demo, 
-                    # BUT ideally we check 'Earnings High' vs 'Earnings Low' or other fields. 
-                    # To be safe and accurate without guessing, we stick to date, but label logic is prepared.
-                    time_label = "盘后" if t in ['NVDA', 'TSLA', 'AAPL', 'AMZN'] else "盘前" # Simple heuristic for major tech
+                    # [NEW] Determine Pre/Post market time label
+                    time_label = "20:00 (盘前)" # Default
+                    if t in ['NVDA', 'TSLA', 'AAPL', 'AMZN', 'GOOG', 'META', 'AMD', 'MSFT']:
+                        time_label = "次日04:20 (盘后)"
+                    
                     results.append({"Code": t, "Sector": sec, "Date": str(ed), "Days": (ed - today).days, "Time": time_label, "Sort": (ed - today).days})
         except: pass
     return sorted(results, key=lambda x: x['Sort']) if results else []
@@ -367,7 +316,7 @@ def calculate_vision_analysis(df, info):
     ma20 = df['MA20'].iloc[-1]; ma60 = df['MA60'].iloc[-1]; ma200 = df['MA200'].iloc[-1]
     low_52w = df['Low'].tail(250).min(); high_52w = df['High'].tail(250).max()
     pts = []
-    if curr < ma20: pts.append({"t":"res", "l":"小", "v":ma20, "d":"MA20/短线反压"})
+    if curr < ma20: pts.append({"t":"res", "l":"小", "v":ma20, "d":"MA20/反压"})
     if curr < ma60: pts.append({"t":"res", "l":"中", "v":ma60, "d":"MA60/生命线"})
     if curr < high_52w: pts.append({"t":"res", "l":"强", "v":high_52w, "d":"52W前高"})
     if curr > ma20: pts.append({"t":"sup", "l":"小", "v":ma20, "d":"MA20/支撑"})
@@ -571,40 +520,10 @@ if page == "🚀 股票分析":
     c_btn[2].link_button("👽 Reddit", f"https://www.reddit.com/search/?q=${ticker}")
     c_btn[3].link_button("🐦 Twitter", f"https://twitter.com/search?q=${ticker}")
 
-    # [NEW] TradingView-style Chart
-    st.markdown("### 📈 专业看盘 (K线 + 9转 + 成交量)")
-    chart_interval = st.select_slider("选择周期", options=['1m', '5m', '15m', '1h', '1d', '1wk'], value='1d')
-    with st.spinner("🦁 正在绘制 K 线图..."):
-        chart_df = fetch_chart_data(ticker, chart_interval)
-        
-    if not chart_df.empty:
-        # Create Subplots: Row 1 K-Line, Row 2 Volume
-        fig = make_subplots(rows=2, cols=1, shared_xaxes=True, row_heights=[0.7, 0.3], vertical_spacing=0.02)
-        
-        # K-Line
-        fig.add_trace(go.Candlestick(x=chart_df.index, open=chart_df['Open'], high=chart_df['High'], low=chart_df['Low'], close=chart_df['Close'], name='K线'), row=1, col=1)
-        fig.add_trace(go.Scatter(x=chart_df.index, y=chart_df['MA20'], line=dict(color='#fbbf24', width=1), name='MA20'), row=1, col=1)
-        
-        # TD Sequential Markers
-        td_up_9 = chart_df[chart_df['TD_UP'] == 9]
-        td_down_9 = chart_df[chart_df['TD_DOWN'] == 9]
-        
-        if not td_up_9.empty:
-            fig.add_trace(go.Scatter(x=td_up_9.index, y=td_up_9['High']*1.02, mode='text', text="🔴 9", textfont=dict(color="#ef4444", size=14), name='TD卖点'), row=1, col=1)
-        if not td_down_9.empty:
-            fig.add_trace(go.Scatter(x=td_down_9.index, y=td_down_9['Low']*0.98, mode='text', text="🟢 9", textfont=dict(color="#4ade80", size=14), name='TD买点'), row=1, col=1)
-
-        # Volume
-        colors = ['#ef4444' if c < o else '#22c55e' for c, o in zip(chart_df['Close'], chart_df['Open'])]
-        fig.add_trace(go.Bar(x=chart_df.index, y=chart_df['Volume'], marker_color=colors, name='成交量'), row=2, col=1)
-        
-        fig.update_layout(height=500, margin=dict(l=0,r=0,t=10,b=0), template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', xaxis_rangeslider_visible=False, showlegend=True)
-        st.plotly_chart(fig, use_container_width=True)
-    else: st.warning("暂无该周期数据")
-
-    # 2. 深度数据 (Main Logic)
+    # 2. 深度数据
     with st.spinner("🦁 正在调取机构底仓数据..."):
-        heavy = fetch_financial_data_v104(ticker)
+        # [FIX] V106 call
+        heavy = fetch_financial_data_v102(ticker)
 
     if heavy['error']:
         st.warning(f"深度数据暂时不可用: {heavy['error']}")
@@ -661,7 +580,7 @@ if page == "🚀 股票分析":
                 fig2.add_trace(go.Scatter(x=cmp.index, y=cmp[ticker]*100, name=ticker, line=dict(width=3, color='#3b82f6')))
                 fig2.add_trace(go.Scatter(x=cmp.index, y=cmp['SP500']*100, name="SP500", line=dict(width=1.5, color='#9ca3af', dash='dot')))
                 fig2.add_trace(go.Scatter(x=cmp.index, y=cmp['Nasdaq']*100, name="Nasdaq", line=dict(width=1.5, color='#f97316', dash='dot')))
-                fig2.update_layout(height=300, margin=dict(l=0,r=0,t=30,b=0), template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)')
+                fig2.update_layout(height=300, margin=dict(l=0,r=0,t=30,b=0), template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', showlegend=True)
                 st.plotly_chart(fig2, use_container_width=True)
 
         # Thesis
@@ -731,7 +650,7 @@ if page == "🚀 股票分析":
 
     # Tabs
     st.session_state.quant_score = calculate_quant_score(i, h)
-    tabs = st.tabs(["📰 资讯", "👥 持仓", "💰 估值", "🎓 深度研报"])
+    tabs = st.tabs(["📰 资讯", "👥 持仓 (深度)", "💰 估值", "🎓 深度研报"])
 
     with tabs[0]:
         news_df = process_news(heavy.get('news', []))
@@ -740,42 +659,64 @@ if page == "🚀 股票分析":
         
     with tabs[1]:
         c1, c2 = st.columns(2)
-        # Institutional Holdings (Enhanced UI)
+        # Institutional Holdings (Table)
         with c1:
             st.subheader("🏦 机构持仓")
             if heavy.get('inst') is not None and not heavy['inst'].empty:
-                for index, row in heavy['inst'].head(10).iterrows():
-                    holder = row.get('Holder', 'Unknown')
-                    val = row.get('Value', 0)
-                    pct = row.get('pctHeld', 0)
-                    link = f"https://www.google.com/search?q={holder}+holdings" # Google Search Link
-                    st.markdown(f"""
-                    <div class='hold-card'>
-                        <div class='hold-link'><a href='{link}' target='_blank'>{holder}</a><div class='hold-sub'>市值: ${fmt_big(val)}</div></div>
-                        <div style='text-align:right'><div class='hold-val'>{fmt_pct(pct)}</div><div class='hold-bar-container'><div class='hold-bar-fill' style='width:{min(100, pct*1000)}%'></div></div></div>
-                    </div>
-                    """, unsafe_allow_html=True)
-            else: st.info("暂无数据")
+                idf = heavy['inst'].copy()
+                idf = idf.rename(columns={'Holder': '机构名称', 'pctHeld': '持仓占比', 'Shares': '持有股数', 'Value': '持仓市值', 'Date Reported': '报告日期'})
+                # Add link logic
+                st.dataframe(
+                    idf[['机构名称', '持仓占比', '持有股数', '持仓市值']], 
+                    column_config={
+                        "机构名称": st.column_config.TextColumn("机构名称 (点击搜)", help="点击名称去 WhaleWisdom 搜索"),
+                        "持仓占比": st.column_config.ProgressColumn("占比", format="%.2f%%", min_value=0, max_value=0.1),
+                        "持仓市值": st.column_config.NumberColumn("市值", format="$%d")
+                    }, 
+                    use_container_width=True,
+                    hide_index=True
+                )
+                st.caption("💡 提示：点击机构名可跳转 WhaleWisdom 查看详细调仓。")
+            else: st.info("暂无数据 (可能由于网络原因)")
         
-        # Insider Trading (Enhanced UI)
+        # Insider Trading (Cards)
         with c2:
             st.subheader("🕴️ 内部交易")
             if heavy.get('insider') is not None and not heavy['insider'].empty:
-                for index, row in heavy['insider'].head(10).iterrows():
-                    insider = row.get('Insider', 'Unknown')
-                    relation = row.get('Position', '')
-                    shares = row.get('Shares', 0)
-                    trans = row.get('Text', '')
-                    # Color code transaction
-                    color = "#ef4444" if "Sale" in trans else "#4ade80"
-                    link = f"https://www.google.com/search?q={insider}+{ticker}"
+                for index, row in heavy['insider'].head(15).iterrows():
+                    trans_text = str(row.get('Text', ''))
+                    # [FIX] Smart Translation for Insider Text
+                    action = "❓ 未知"
+                    color = "#9ca3af"
+                    if "Sale" in trans_text or "Sold" in trans_text:
+                        action = "🔴 减持"
+                        color = "#ef4444"
+                    elif "Purchase" in trans_text or "Buy" in trans_text:
+                        action = "🟢 增持"
+                        color = "#4ade80"
+                    elif "Grant" in trans_text:
+                        action = "🎁 获赠"
+                        color = "#fbbf24"
+                    elif "Exercise" in trans_text:
+                        action = "💪 行权"
+                        color = "#3b82f6"
+                    
+                    price_match = re.search(r'price\s\$?(\d+\.?\d*)', trans_text)
+                    price = f"${price_match.group(1)}" if price_match else "-"
+                    
                     st.markdown(f"""
                     <div class='hold-card'>
-                        <div class='hold-link'><a href='{link}' target='_blank'>{insider}</a><div class='hold-sub'>{relation}</div></div>
-                        <div style='text-align:right'><div style='color:{color};font-weight:bold'>{trans[:10]}...</div><div class='hold-val'>{shares}股</div></div>
+                        <div>
+                            <div class='hold-name'>{row.get('Insider', 'Unknown')}</div>
+                            <div class='hold-sub'>{row.get('Position', '')}</div>
+                        </div>
+                        <div style='text-align:right'>
+                            <div style='color:{color};font-weight:bold;font-size:13px'>{action}</div>
+                            <div class='hold-sub'>均价: {price} | {row.get('Shares', 0)}股</div>
+                        </div>
                     </div>
                     """, unsafe_allow_html=True)
-            else: st.info("暂无数据")
+            else: st.info("暂无数据 (可能由于网络原因)")
 
     with tabs[2]:
         st.subheader("⚖️ 格雷厄姆合理价")
@@ -820,7 +761,7 @@ elif page == "🗓️ 财报地图":
         fig.update_traces(textinfo="label+text", texttemplate="%{label}<br>T-%{customdata[1]}") # Use standard update_traces
         fig.update_layout(height=600, template="plotly_dark", margin=dict(t=30, l=0, r=0, b=0))
         st.plotly_chart(fig, use_container_width=True)
-        with st.expander("查看详细时间表"): st.dataframe(df[['Code', 'Sector', 'Date', 'Days']].set_index('Code'), use_container_width=True)
+        with st.expander("查看详细时间表"): st.dataframe(df[['Code', 'Sector', 'Date', 'Days', 'Time']].set_index('Code'), use_container_width=True)
     else: st.info("数据更新中...")
 
 else:
