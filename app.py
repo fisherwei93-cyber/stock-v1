@@ -17,7 +17,7 @@ for key in ['HTTP_PROXY', 'HTTPS_PROXY', 'http_proxy', 'https_proxy']:
 
 ICON_URL = "https://cdn-icons-png.flaticon.com/512/10452/10452449.png"
 
-st.set_page_config(page_title="摩根·V1 (Final)", layout="wide", page_icon="🦁")
+st.set_page_config(page_title="摩根·V1 (Pro)", layout="wide", page_icon="🦁")
 
 # ================= 2. 样式死锁 (UI) =================
 st.markdown(f"""
@@ -68,7 +68,7 @@ st.markdown(f"""
     .hist-tag {{ display: inline-block; background: #333; color: #ccc; padding: 4px 10px; border-radius: 15px; font-size: 11px; margin: 3px; cursor: pointer; border: 1px solid #444; transition: 0.2s; }}
     .hist-tag:hover {{ border-color: #FF9F1C; color: #FF9F1C; background: #222; }}
 
-    /* 持仓卡片 (Ultra Modern UI) */
+    /* 持仓卡片 */
     .hold-card {{ background: rgba(30, 30, 30, 0.6); border-bottom: 1px solid #333; padding: 10px; display: flex; justify-content: space-between; align-items: center; transition: 0.2s; cursor: pointer; }}
     .hold-card:hover {{ background: rgba(50, 50, 50, 0.8); border-color: #555; }}
     .hold-name {{ font-weight: 600; font-size: 13px; color: #f3f4f6; letter-spacing: 0.5px; text-decoration: none; }}
@@ -144,9 +144,9 @@ def fetch_realtime_price(ticker):
         return {"price": price, "prev": prev, "ext_price": ext_price, "ext_label": ext_label}
     except: return {"price": 0, "prev": 0, "ext_price": None, "ext_label": ""}
 
-# [FIX] V105.2: 模块级独立熔断，专门修复 NVDA 搜索崩溃问题
+# [FIX] V105.3: 全模块熔断+指标计算修复
 @st.cache_data(ttl=3600, show_spinner=False)
-def fetch_financial_data_v105_2(ticker):
+def fetch_financial_data_v105_3(ticker):
     import yfinance as yf
     max_retries = 3; h = pd.DataFrame()
     s = yf.Ticker(ticker)
@@ -158,31 +158,59 @@ def fetch_financial_data_v105_2(ticker):
         except: time.sleep(2**attempt)
     if h.empty: return {"history": pd.DataFrame(), "info": {}, "error": "No Data"}
 
-    # Core Indicators
-    h['MA20'] = h['Close'].rolling(20).mean(); h['MA60'] = h['Close'].rolling(60).mean()
-    h['MA120'] = h['Close'].rolling(120).mean(); h['MA200'] = h['Close'].rolling(200).mean()
-    h['TR'] = np.maximum(h['High'] - h['Low'], np.abs(h['High'] - h['Close'].shift(1)))
-    h['ATR'] = h['TR'].rolling(10).mean(); h['ST_Lower'] = ((h['High']+h['Low'])/2) - (3 * h['ATR'])
-    v = h['Volume'].values; tp = (h['High'] + h['Low'] + h['Close']) / 3
-    h['VWAP'] = (tp * v).cumsum() / v.cumsum(); h['FVG_Bull'] = (h['Low'] > h['High'].shift(2))
-    h['STD20'] = h['Close'].rolling(20).std(); h['Z_Score'] = (h['Close'] - h['MA20']) / h['STD20']
+    # --- Core Indicators ---
+    h['MA20'] = h['Close'].rolling(20).mean()
+    h['MA60'] = h['Close'].rolling(60).mean()
+    h['MA120'] = h['Close'].rolling(120).mean()
+    h['MA200'] = h['Close'].rolling(200).mean()
     
+    # ATR & SuperTrend
+    h['TR'] = np.maximum(h['High'] - h['Low'], np.abs(h['High'] - h['Close'].shift(1)))
+    h['ATR'] = h['TR'].rolling(10).mean()
+    h['ST_Lower'] = ((h['High']+h['Low'])/2) - (3 * h['ATR'])
+    
+    # VWAP & FVG
+    v = h['Volume'].values; tp = (h['High'] + h['Low'] + h['Close']) / 3
+    h['VWAP'] = (tp * v).cumsum() / v.cumsum()
+    h['FVG_Bull'] = (h['Low'] > h['High'].shift(2))
+    
+    # Z-Score
+    h['STD20'] = h['Close'].rolling(20).std()
+    h['Z_Score'] = (h['Close'] - h['MA20']) / h['STD20']
+    
+    # ADX (Directional Movement)
+    plus_dm = h['High'].diff()
+    minus_dm = h['Low'].diff()
+    plus_dm[plus_dm < 0] = 0
+    minus_dm[minus_dm > 0] = 0
+    minus_dm = minus_dm.abs()
+    
+    tr14 = h['TR'].rolling(14).sum()
+    plus_di = 100 * (plus_dm.rolling(14).sum() / tr14)
+    minus_di = 100 * (minus_dm.rolling(14).sum() / tr14)
+    dx = 100 * abs(plus_di - minus_di) / (plus_di + minus_di)
+    h['ADX'] = dx.rolling(14).mean()
+    
+    # CCI (Optimized calculation)
+    sma_tp = tp.rolling(20).mean()
+    # Mean Absolute Deviation approximation
+    mad = (tp - sma_tp).abs().rolling(20).mean() 
+    h['CCI'] = (tp - sma_tp) / (0.015 * mad)
+    
+    # MACD & RSI
+    h['MACD'] = h['Close'].ewm(span=12).mean() - h['Close'].ewm(span=26).mean()
+    delta = h['Close'].diff()
+    gain = (delta.where(delta > 0, 0)).rolling(14).mean()
+    loss = (-delta.where(delta < 0, 0)).rolling(14).mean()
+    h['RSI'] = 100 - (100 / (1 + (gain / loss)))
+    
+    # HMA
     def wma(series, window):
         weights = np.arange(1, window + 1)
         return series.rolling(window).apply(lambda x: np.dot(x, weights) / weights.sum(), raw=True)
     period = 14
     wma_half = wma(h['Close'], period // 2); wma_full = wma(h['Close'], period)
     h['HMA'] = wma(2 * wma_half - wma_full, int(np.sqrt(period)))
-    plus_dm = h['High'].diff(); minus_dm = h['Low'].diff()
-    plus_dm[plus_dm < 0] = 0; minus_dm[minus_dm > 0] = 0; minus_dm = minus_dm.abs()
-    tr14 = h['TR'].rolling(14).sum()
-    plus_di = 100 * (plus_dm.rolling(14).sum() / tr14); minus_di = 100 * (minus_dm.rolling(14).sum() / tr14)
-    dx = 100 * abs(plus_di - minus_di) / (plus_di + minus_di); h['ADX'] = dx.rolling(14).mean()
-    sma_tp = tp.rolling(20).mean(); mad = tp.rolling(20).apply(lambda x: np.mean(np.abs(x - np.mean(x))), raw=True)
-    h['CCI'] = (tp - sma_tp) / (0.015 * mad)
-    h['MACD'] = h['Close'].ewm(span=12).mean() - h['Close'].ewm(span=26).mean()
-    delta = h['Close'].diff(); gain = (delta.where(delta > 0, 0)).rolling(14).mean(); loss = (-delta.where(delta < 0, 0)).rolling(14).mean()
-    h['RSI'] = 100 - (100 / (1 + (gain / loss)))
 
     cmp_norm = pd.DataFrame()
     try:
@@ -194,7 +222,7 @@ def fetch_financial_data_v105_2(ticker):
         cmp_norm = cmp_df.iloc[start:] / cmp_df.iloc[start] - 1
     except: pass
 
-    # [FIX] V105.2: 全模块独立熔断保护 (救活 NVDA)
+    # 独立熔断保护 (NVDA Fix)
     safe_info = {}; upgrades = None; inst = None; insider = None; fin = None
     try: safe_info = s.info if s.info else {}
     except: pass
@@ -222,7 +250,6 @@ def fetch_sector_earnings():
                 if e_date:
                     ed = datetime.datetime.strptime(str(e_date).split()[0], "%Y-%m-%d").date()
                     if ed >= today:
-                        # [NEW] Beijing Time Logic
                         time_label = "20:00 (盘前)" 
                         if t in ['NVDA', 'TSLA', 'AAPL', 'AMZN', 'GOOG', 'META', 'AMD', 'MSFT']: time_label = "次日04:20 (盘后)"
                         results.append({"Code": t, "Sector": sec, "Date": str(ed), "Days": (ed - today).days, "Time": time_label, "Sort": (ed - today).days})
@@ -363,7 +390,7 @@ if page == "🚀 股票分析":
     color = "#4ade80" if (p-prev) >= 0 else "#f87171"
     st.markdown(f"<div class='price-container'><div style='color:#9CA3AF; font-size:14px; font-weight:bold;'>{ticker} 实时报价</div><div class='big-price' style='color:{color}'>${p:.2f}</div><div class='price-change' style='background-color:rgba(255,255,255,0.05); color:{color}'>{p-prev:+.2f} ({(p-prev)/prev:+.2%})</div>{f'<div class="ext-price">🌙 {p_data["ext_label"]}: ${p_data["ext_price"]:.2f}</div>' if p_data['ext_price'] else ''}</div>", unsafe_allow_html=True)
     
-    with st.spinner("🦁 正在调取机构底仓数据..."): heavy = fetch_financial_data_v105_2(ticker)
+    with st.spinner("🦁 正在调取机构底仓数据..."): heavy = fetch_financial_data_v105_3(ticker)
     h, i = heavy['history'], heavy['info']
     
     if not h.empty:
@@ -399,12 +426,37 @@ if page == "🚀 股票分析":
             fig.update_layout(height=400, template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', xaxis_rangeslider_visible=False)
             st.plotly_chart(fig, use_container_width=True)
 
+        # [FIX] V105.3: Explicitly expanded code for Indicators
         with st.expander("📉 进阶指标 (Z-Score/ADX/CCI)", expanded=False):
-            for name, col, clr, ref, info in [("乖离率 (Z-Score)", "Z_Score", "#f472b6", 2, "红线涨过头"), ("趋势强度 (ADX)", "ADX", "#fbbf24", 25, "25以上趋势强"), ("顺势指标 (CCI)", "CCI", "#22d3ee", 100, "100以上超买")]:
-                st.markdown(f"##### {name}"); fig_z = go.Figure(); fig_z.add_trace(go.Scatter(x=h.index, y=h[col], line=dict(color=clr, width=1)))
-                fig_z.add_hline(y=ref, line_dash='dot', line_color='red'); fig_z.add_hline(y=-ref, line_dash='dot', line_color='green')
-                fig_z.update_layout(height=180, template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)'); st.plotly_chart(fig_z, use_container_width=True)
-                st.markdown(f"<div class='ind-desc'>💡 <b>提示：</b> {info}</div>", unsafe_allow_html=True)
+            try:
+                # 1. Z-Score
+                st.markdown("##### 1. 乖离率 (Z-Score)")
+                fig_z = go.Figure()
+                fig_z.add_trace(go.Scatter(x=h.index, y=h['Z_Score'], line=dict(color='#f472b6', width=1), name='Z-Score'))
+                fig_z.add_hline(y=2, line_dash='dot', line_color='red'); fig_z.add_hline(y=-2, line_dash='dot', line_color='green')
+                fig_z.update_layout(height=200, template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', margin=dict(l=0,r=0,t=10,b=0))
+                st.plotly_chart(fig_z, use_container_width=True)
+                st.markdown("<div class='ind-desc'>💡 <b>提示：</b> 红线(>2)代表涨过头，绿线(<-2)代表跌过头</div>", unsafe_allow_html=True)
+
+                # 2. ADX
+                st.markdown("##### 2. 趋势强度 (ADX)")
+                fig_a = go.Figure()
+                fig_a.add_trace(go.Scatter(x=h.index, y=h['ADX'], line=dict(color='#fbbf24', width=1), name='ADX'))
+                fig_a.add_hline(y=25, line_dash='dot', line_color='white')
+                fig_a.update_layout(height=200, template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', margin=dict(l=0,r=0,t=10,b=0))
+                st.plotly_chart(fig_a, use_container_width=True)
+                st.markdown("<div class='ind-desc'>💡 <b>提示：</b> >25 代表趋势强劲，<20 代表震荡市</div>", unsafe_allow_html=True)
+
+                # 3. CCI
+                st.markdown("##### 3. 顺势指标 (CCI)")
+                fig_c = go.Figure()
+                fig_c.add_trace(go.Scatter(x=h.index, y=h['CCI'], line=dict(color='#22d3ee', width=1), name='CCI'))
+                fig_c.add_hline(y=100, line_dash='dot', line_color='red'); fig_c.add_hline(y=-100, line_dash='dot', line_color='green')
+                fig_c.update_layout(height=200, template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', margin=dict(l=0,r=0,t=10,b=0))
+                st.plotly_chart(fig_c, use_container_width=True)
+                st.markdown("<div class='ind-desc'>💡 <b>提示：</b> >100 超买，<-100 超卖</div>", unsafe_allow_html=True)
+            except Exception as e:
+                st.error(f"指标加载失败: {e}")
 
     # Core Data & Tabs
     st.subheader("📊 核心数据"); c1, c2, c3 = st.columns(3); safe_i = i if isinstance(i, dict) else {}
@@ -423,22 +475,19 @@ if page == "🚀 股票分析":
         with c1:
             st.subheader("🏦 机构持仓")
             if heavy.get('inst') is not None:
-                # Top 5 only
                 idf = heavy['inst'].copy().rename(columns={'Holder': '机构名称', 'pctHeld': '占比', 'Value': '市值'})
                 st.dataframe(idf[['机构名称', '占比', '市值']], column_config={"占比": st.column_config.ProgressColumn("占比", format="%.2f%%", min_value=0, max_value=0.1)}, use_container_width=True, hide_index=True)
-            else: st.info("暂无数据 (Yahoo 限制中)")
+            else: st.info("暂无数据 (Yahoo 频率限制)")
         with c2:
             st.subheader("🕴️ 内部交易")
             if heavy.get('insider') is not None:
                 for index, row in heavy['insider'].head(10).iterrows():
-                    # [NEW] Regex Parsing for Insider Text
+                    # [KEEP] Regex Parsing for Insider Text
                     trans_text = str(row.get('Text', ''))
-                    # Default
                     action = "❓ 未知"; color = "#9ca3af"
                     if "Sale" in trans_text or "Sold" in trans_text: action = "🔴 减持"; color = "#ef4444"
                     elif "Purchase" in trans_text or "Buy" in trans_text: action = "🟢 增持"; color = "#4ade80"
                     
-                    # Extract Price
                     price_match = re.search(r'price\s\$?(\d+\.?\d*)', trans_text)
                     price = f"${price_match.group(1)}" if price_match else "-"
                     
