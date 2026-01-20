@@ -26,84 +26,40 @@ st.markdown(f"""
     <link rel="icon" type="image/png" href="{ICON_URL}">
 </head>
 <style>
-    /* 全局背景 */
     .stApp {{ background-color: #000000 !important; color: #FFFFFF !important; }}
     section[data-testid="stSidebar"] {{ background-color: #111111 !important; }}
     header {{ visibility: visible !important; }}
-
-    /* 核心高亮 */
-    div[data-testid="stMetricValue"] {{
-        color: #FFFFFF !important; font-size: 28px !important; font-weight: 900 !important;
-        text-shadow: 0 0 10px rgba(255,255,255,0.3);
-    }}
+    div[data-testid="stMetricValue"] {{ color: #FFFFFF !important; font-size: 28px !important; font-weight: 900 !important; text-shadow: 0 0 10px rgba(255,255,255,0.3); }}
     div[data-testid="stMetricLabel"] {{ color: #9CA3AF !important; font-weight: 700 !important; }}
-    
-    /* 侧边栏样式 */
     .earning-card {{ background: #1e1b4b; border-left: 4px solid #6366f1; padding: 8px; margin-bottom: 6px; border-radius: 4px; }}
     .earning-alert {{ background: #450a0a; border-left: 4px solid #ef4444; animation: pulse 2s infinite; }}
-    @keyframes pulse {{
-        0% {{ box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); }}
-        70% {{ box-shadow: 0 0 0 6px rgba(239, 68, 68, 0); }}
-        100% {{ box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }}
-    }}
+    @keyframes pulse {{ 0% {{ box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); }} 70% {{ box-shadow: 0 0 0 6px rgba(239, 68, 68, 0); }} 100% {{ box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }} }}
     .ec-row {{ display: flex; justify-content: space-between; align-items: center; font-size: 13px; }}
     .ec-ticker {{ font-weight: bold; color: #fff; }}
     .ec-date {{ color: #cbd5e1; font-family: monospace; }}
     .ec-time {{ font-size: 11px; color: #fbbf24; margin-left: 5px; font-weight: bold; }}
     .ec-sector {{ font-size: 10px; padding: 1px 4px; border-radius: 3px; background: #333; color: #aaa; margin-top: 4px; display: inline-block;}}
-
-    /* 核心报价盘 */
     .price-container {{ background: #1A1A1A; padding: 20px; border-radius: 15px; border: 1px solid #333; text-align: center; margin-bottom: 20px; }}
     .big-price {{ font-size: 56px !important; font-weight: 900 !important; color: #FFFFFF; line-height: 1.1; text-shadow: 0 0 20px rgba(255,255,255,0.1); }}
     .price-change {{ font-size: 24px !important; font-weight: bold; padding: 5px 15px; border-radius: 8px; display: inline-block; }}
     .ext-price {{ font-size: 16px !important; color: #9CA3AF; margin-top: 8px; font-family: monospace; }}
-
-    /* 视野黄框 */
     .l-box {{ background-color: #FF9F1C; color: #000000 !important; padding: 15px; border-radius: 8px; margin-bottom: 20px; box-shadow: 0 4px 15px rgba(255, 159, 28, 0.4); }}
     .l-title {{ font-size: 18px; font-weight: 900; border-bottom: 2px solid #000; padding-bottom: 8px; margin-bottom: 10px; color: #000; }}
     .l-sub {{ font-size: 14px; font-weight: 800; margin-top: 8px; margin-bottom: 4px; color: #333; text-transform: uppercase; }}
     .l-item {{ display: flex; justify-content: space-between; align-items: center; font-size: 14px; font-weight: 600; border-bottom: 1px dashed rgba(0,0,0,0.2); padding: 3px 0; color: #000; }}
-    
-    /* 历史搜索 */
     .hist-tag {{ display: inline-block; background: #333; color: #ccc; padding: 4px 10px; border-radius: 15px; font-size: 11px; margin: 3px; cursor: pointer; border: 1px solid #444; transition: 0.2s; }}
     .hist-tag:hover {{ border-color: #FF9F1C; color: #FF9F1C; background: #222; }}
-
-    /* 持仓卡片 */
-    .hold-card {{ background: rgba(30, 30, 30, 0.6); border-bottom: 1px solid #333; padding: 10px; display: flex; justify-content: space-between; align-items: center; transition: 0.2s; cursor: pointer; }}
-    .hold-card:hover {{ background: rgba(50, 50, 50, 0.8); border-color: #555; }}
-    .hold-name {{ font-weight: 600; font-size: 13px; color: #f3f4f6; letter-spacing: 0.5px; text-decoration: none; }}
+    .hold-card {{ background: rgba(30, 30, 30, 0.6); border-bottom: 1px solid #333; padding: 10px; display: flex; justify-content: space-between; align-items: center; transition: 0.2s; }}
+    .hold-name {{ font-weight: 600; font-size: 13px; color: #f3f4f6; letter-spacing: 0.5px; }}
     .hold-sub {{ font-size: 11px; color: #9ca3af; margin-top: 2px; }}
     .hold-val {{ font-family: 'Segoe UI', monospace; font-weight: bold; color: #4ade80; font-size: 13px; }}
     .hold-bar-container {{ width: 60px; height: 4px; background: #333; border-radius: 2px; margin-top: 4px; margin-left: auto; }}
     .hold-bar-fill {{ height: 100%; background: linear-gradient(90deg, #3b82f6, #60a5fa); border-radius: 2px; }}
-    .hold-link a {{ color: #fff; text-decoration: none; }}
-    .hold-link a:hover {{ color: #FF9F1C; }}
-
-    /* 指标解释框 */
     .ind-desc {{ background: #111; border-left: 3px solid #3b82f6; padding: 8px; margin-top: 5px; font-size: 12px; color: #ccc; }}
-
-    /* 通用组件 */
-    .tg-s {{ background: rgba(0,0,0,0.1); padding: 1px 5px; border-radius: 4px; font-size: 11px; margin-left: 6px; color: #333; }}
-    .thesis-col {{ flex: 1; padding: 10px; border-radius: 6px; font-size: 13px; margin-top:5px; }}
-    .thesis-bull {{ background: rgba(6, 78, 59, 0.8); border: 1px solid #34d399; color: #fff; }}
-    .thesis-bear {{ background: rgba(127, 29, 29, 0.8); border: 1px solid #f87171; color: #fff; }}
-    .score-card {{ background: #1A1A1A; padding: 15px; border-radius: 12px; text-align: center; border: 1px solid #333; margin-bottom: 15px; }}
-    .sc-val {{ font-size: 42px; font-weight: 900; color: #4ade80; line-height: 1; }}
-    .sc-lbl {{ font-size: 12px; color: #D1D5DB; font-weight: bold; }}
-    .wl-row {{ background-color: #1A1A1A; padding: 12px; margin-bottom: 8px; border-radius: 6px; border-left: 4px solid #555; display: flex; justify-content: space-between; align-items: center; color: #FFFFFF; }}
-    .social-box {{ display: flex; gap: 10px; margin-top: 10px; }}
-    .mc-box {{ background: #0f172a; border: 1px solid #1e293b; padding: 10px; border-radius: 6px; margin-top:5px; }}
-    .note-box {{ background: #1e1b4b; border-left: 4px solid #6366f1; padding: 10px; font-size: 12px; color: #e0e7ff; margin-top: 5px; border-radius: 4px; line-height: 1.6; }}
-    .streamlit-expanderHeader {{ background-color: #222 !important; color: #fff !important; border: 1px solid #444; }}
-    
-    /* 研报样式 */
-    .report-title {{ font-size: 22px; font-weight: 900; color: #FF9F1C; margin-bottom: 10px; border-left: 5px solid #FF9F1C; padding-left: 10px; }}
-    .report-text {{ font-size: 15px; line-height: 1.8; color: #E5E7EB; margin-bottom: 20px; background: #1A1A1A; padding: 15px; border-radius: 8px; }}
     .guru-check {{ display: flex; align-items: center; margin-bottom: 8px; padding: 8px; background: #262626; border-radius: 6px; }}
     .wiki-card {{ background: #1A1A1A; border: 1px solid #333; border-radius: 8px; padding: 20px; margin-bottom: 20px; }}
     .wiki-title {{ font-size: 20px; font-weight: bold; color: #FF9F1C; margin-bottom: 15px; border-bottom: 1px solid #444; padding-bottom: 5px; }}
     .wiki-text {{ font-size: 14px; color: #E5E7EB; line-height: 1.8; margin-bottom: 10px; }}
-    .wiki-tag {{ background: #374151; color: #fff; padding: 2px 6px; border-radius: 4px; font-size: 12px; margin-right: 5px; border: 1px solid #555; }}
 </style>
 """, unsafe_allow_html=True)
 
@@ -118,11 +74,6 @@ def fmt_big(v):
     if v > 1e6: return f"{v/1e6:.2f}M"
     return str(v)
 def mk_range(v): return f"{v*0.985:.1f}-{v*1.015:.1f}" if isinstance(v, (int, float)) else "-"
-def smart_translate(t, d): 
-    if not isinstance(t, str): return t
-    for k,v in d.items(): 
-        if k.lower() in t.lower(): return v
-    return t
 
 @st.cache_data(ttl=30, show_spinner=False)
 def fetch_realtime_price(ticker):
@@ -144,7 +95,7 @@ def fetch_realtime_price(ticker):
         return {"price": price, "prev": prev, "ext_price": ext_price, "ext_label": ext_label}
     except: return {"price": 0, "prev": 0, "ext_price": None, "ext_label": ""}
 
-# [FIX] V106: 全模块熔断 + 指标计算安全修复
+# [FIX] V106: 数据回填补丁 (Fast Info Fallback)
 @st.cache_data(ttl=3600, show_spinner=False)
 def fetch_financial_data_v106(ticker):
     import yfinance as yf
@@ -158,51 +109,26 @@ def fetch_financial_data_v106(ticker):
         except: time.sleep(2**attempt)
     if h.empty: return {"history": pd.DataFrame(), "info": {}, "error": "No Data"}
 
-    # --- Core Indicators (Safe) ---
-    h['MA20'] = h['Close'].rolling(20).mean()
-    h['MA60'] = h['Close'].rolling(60).mean()
-    h['MA120'] = h['Close'].rolling(120).mean()
-    h['MA200'] = h['Close'].rolling(200).mean()
-    
+    # --- Core Indicators ---
+    h['MA20'] = h['Close'].rolling(20).mean(); h['MA60'] = h['Close'].rolling(60).mean()
+    h['MA120'] = h['Close'].rolling(120).mean(); h['MA200'] = h['Close'].rolling(200).mean()
     h['TR'] = np.maximum(h['High'] - h['Low'], np.abs(h['High'] - h['Close'].shift(1)))
-    h['ATR'] = h['TR'].rolling(10).mean()
-    h['ST_Lower'] = ((h['High']+h['Low'])/2) - (3 * h['ATR'])
-    
+    h['ATR'] = h['TR'].rolling(10).mean(); h['ST_Lower'] = ((h['High']+h['Low'])/2) - (3 * h['ATR'])
     v = h['Volume'].values; tp = (h['High'] + h['Low'] + h['Close']) / 3
-    h['VWAP'] = (tp * v).cumsum() / v.cumsum()
-    h['FVG_Bull'] = (h['Low'] > h['High'].shift(2))
+    h['VWAP'] = (tp * v).cumsum() / v.cumsum(); h['FVG_Bull'] = (h['Low'] > h['High'].shift(2))
+    h['STD20'] = h['Close'].rolling(20).std(); h['Z_Score'] = (h['Close'] - h['MA20']) / h['STD20']
     
-    h['STD20'] = h['Close'].rolling(20).std()
-    h['Z_Score'] = (h['Close'] - h['MA20']) / h['STD20']
-    
-    # ADX
+    # Advanced
     plus_dm = h['High'].diff(); minus_dm = h['Low'].diff()
     plus_dm[plus_dm < 0] = 0; minus_dm[minus_dm > 0] = 0; minus_dm = minus_dm.abs()
     tr14 = h['TR'].rolling(14).sum()
-    plus_di = 100 * (plus_dm.rolling(14).sum() / tr14)
-    minus_di = 100 * (minus_dm.rolling(14).sum() / tr14)
-    dx = 100 * abs(plus_di - minus_di) / (plus_di + minus_di)
-    h['ADX'] = dx.rolling(14).mean()
-    
-    # CCI (Safe Vectorized)
-    sma_tp = tp.rolling(20).mean()
-    mad = (tp - sma_tp).abs().rolling(20).mean() 
+    plus_di = 100 * (plus_dm.rolling(14).sum() / tr14); minus_di = 100 * (minus_dm.rolling(14).sum() / tr14)
+    dx = 100 * abs(plus_di - minus_di) / (plus_di + minus_di); h['ADX'] = dx.rolling(14).mean()
+    sma_tp = tp.rolling(20).mean(); mad = (tp - sma_tp).abs().rolling(20).mean() 
     h['CCI'] = (tp - sma_tp) / (0.015 * mad)
-    
-    # MACD & RSI
     h['MACD'] = h['Close'].ewm(span=12).mean() - h['Close'].ewm(span=26).mean()
-    delta = h['Close'].diff()
-    gain = (delta.where(delta > 0, 0)).rolling(14).mean()
-    loss = (-delta.where(delta < 0, 0)).rolling(14).mean()
+    delta = h['Close'].diff(); gain = (delta.where(delta > 0, 0)).rolling(14).mean(); loss = (-delta.where(delta < 0, 0)).rolling(14).mean()
     h['RSI'] = 100 - (100 / (1 + (gain / loss)))
-    
-    # HMA
-    def wma(series, window):
-        weights = np.arange(1, window + 1)
-        return series.rolling(window).apply(lambda x: np.dot(x, weights) / weights.sum(), raw=True)
-    period = 14
-    wma_half = wma(h['Close'], period // 2); wma_full = wma(h['Close'], period)
-    h['HMA'] = wma(2 * wma_half - wma_full, int(np.sqrt(period)))
 
     cmp_norm = pd.DataFrame()
     try:
@@ -214,10 +140,20 @@ def fetch_financial_data_v106(ticker):
         cmp_norm = cmp_df.iloc[start:] / cmp_df.iloc[start] - 1
     except: pass
 
-    # 独立熔断 (NVDA Fix)
-    safe_info = {}; upgrades = None; inst = None; insider = None; fin = None
+    # 独立熔断 & 数据补全
+    safe_info = {}
     try: safe_info = s.info if s.info else {}
     except: pass
+    
+    # [NEW] Fallback to Fast Info if Info is empty (Fixes Missing Market Cap)
+    if not safe_info or 'marketCap' not in safe_info:
+        try:
+            fast = s.fast_info
+            safe_info['marketCap'] = fast.market_cap
+            safe_info['previousClose'] = fast.previous_close
+        except: pass
+
+    upgrades = None; inst = None; insider = None; fin = None
     try: upgrades = s.upgrades_downgrades
     except: pass
     try: inst = s.institutional_holders
@@ -309,11 +245,6 @@ def calculate_seasonality(df):
     monthly_stats = df.groupby('Month')['Ret'].agg(['mean', lambda x: (x>0).sum() / len(x)])
     monthly_stats.columns = ['Avg Return', 'Win Rate']
     return monthly_stats
-
-def calculate_volume_profile(df, bins=50):
-    price_min = df['Low'].min(); price_max = df['High'].max()
-    hist = np.histogram(df['Close'], bins=bins, range=(price_min, price_max), weights=df['Volume'])
-    return hist[1][:-1], hist[0]
 
 def process_news(news_list):
     if not news_list: return pd.DataFrame()
@@ -439,7 +370,7 @@ if page == "🚀 股票分析":
                 st.markdown("<div class='ind-desc'>💡 <b>提示：</b> >100 超买，<-100 超卖</div>", unsafe_allow_html=True)
             except Exception as e: st.error(f"指标加载失败: {e}")
 
-        # [RECOVER] Missing RSI Gauge & Radar (From V104)
+        # [RECOVER] RSI & Radar
         with st.expander("🦁 市场情绪 & 基本面雷达", expanded=False):
             c1, c2 = st.columns(2)
             with c1:
@@ -457,6 +388,7 @@ if page == "🚀 股票分析":
 
     # Core Data & Tabs
     st.subheader("📊 核心数据"); c1, c2, c3 = st.columns(3); safe_i = i if isinstance(i, dict) else {}
+    # [FIX] Force display even if data is None
     c1.metric("市值", fmt_big(safe_i.get('marketCap'))); c2.metric("做空比", fmt_pct(safe_i.get('shortPercentOfFloat'))); c3.metric("股息率", fmt_pct(safe_i.get('dividendYield')))
     
     st.session_state.quant_score = calculate_quant_score(i, h)
@@ -480,7 +412,6 @@ if page == "🚀 股票分析":
             if heavy.get('insider') is not None:
                 for index, row in heavy['insider'].head(10).iterrows():
                     trans = str(row.get('Text', '')); act = "🔴 减持" if "Sale" in trans else "🟢 增持"
-                    # [KEEP] Regex Parsing
                     price_match = re.search(r'price\s\$?(\d+\.?\d*)', trans)
                     price = f"${price_match.group(1)}" if price_match else "-"
                     st.markdown(f"<div class='hold-card'><div><div class='hold-name'>{row.get('Insider')}</div><div class='hold-sub'>{row.get('Position')}</div></div><div style='text-align:right'><div style='color:{'#ef4444' if 'Sale' in trans else '#4ade80'};font-weight:bold'>{act} (均价 {price})</div><div class='hold-val'>{row.get('Shares')}股</div></div></div>", unsafe_allow_html=True)
@@ -488,22 +419,26 @@ if page == "🚀 股票分析":
 
     with tabs[2]:
         st.subheader("⚖️ 格雷厄姆合理价")
-        eps = safe_i.get('trailingEps', 0); bvps = safe_i.get('bookValue', 0); rt_p = p if p>0 else h['Close'].iloc[-1]
-        if eps and bvps and rt_p: st.metric("Graham Number", f"${(22.5 * eps * bvps) ** 0.5:.2f}", f"{( (22.5*eps*bvps)**0.5 - rt_p)/rt_p:.1%} Upside")
+        eps = safe_i.get('trailingEps'); bvps = safe_i.get('bookValue'); rt_p = p if p>0 else h['Close'].iloc[-1]
+        if eps and bvps and rt_p: 
+            st.metric("Graham Number", f"${(22.5 * eps * bvps) ** 0.5:.2f}", f"{( (22.5*eps*bvps)**0.5 - rt_p)/rt_p:.1%} Upside")
+        else: 
+            st.metric("Graham Number", "N/A", "数据不足")
+            
         st.markdown("---"); st.subheader("💰 DCF 模型"); g = st.slider("预期增长率 %", 0, 50, 15)
         if eps: st.metric("估值", f"${(eps * ((1+g/100)**5) * 25) / (1.1**5):.2f}")
+        else: st.metric("估值", "N/A")
 
     with tabs[3]:
         st.header(f"🎓 {ticker} 深度研报"); st.markdown(f"<div class='report-text'>{safe_i.get('longBusinessSummary', '暂无描述')}</div>", unsafe_allow_html=True)
-        st.markdown("<div class='report-title'>2. 🏰 护城河 (Moat Analysis)</div>")
-        gm, roe, peg = safe_i.get('grossMargins', 0), safe_i.get('returnOnEquity', 0), safe_i.get('pegRatio')
+        gm, roe, peg = safe_i.get('grossMargins'), safe_i.get('returnOnEquity'), safe_i.get('pegRatio')
         c_m1, c_m2 = st.columns(2)
-        c_m1.markdown(f"<div class='score-card'><div class='sc-lbl'>毛利率</div><div class='sc-val' style='color:{'#4ade80' if gm>0.4 else '#f87171'}'>{fmt_pct(gm)}</div></div>", unsafe_allow_html=True)
-        c_m2.markdown(f"<div class='score-card'><div class='sc-lbl'>ROE</div><div class='sc-val' style='color:{'#4ade80' if roe>0.15 else '#f87171'}'>{fmt_pct(roe)}</div></div>", unsafe_allow_html=True)
+        c_m1.markdown(f"<div class='score-card'><div class='sc-lbl'>毛利率</div><div class='sc-val' style='color:{'#4ade80' if gm and gm>0.4 else '#f87171'}'>{fmt_pct(gm)}</div></div>", unsafe_allow_html=True)
+        c_m2.markdown(f"<div class='score-card'><div class='sc-lbl'>ROE</div><div class='sc-val' style='color:{'#4ade80' if roe and roe>0.15 else '#f87171'}'>{fmt_pct(roe)}</div></div>", unsafe_allow_html=True)
         
         st.markdown("<div class='report-title'>3. 🧘‍♂️ 大师检查清单 (Guru Checklist)</div>", unsafe_allow_html=True)
-        st.markdown(f"<div class='guru-check'>{'✅' if gm>0.4 else '❌'} <b>巴菲特护城河</b>: 毛利率 > 40% (当前 {fmt_pct(gm)})</div>", unsafe_allow_html=True)
-        st.markdown(f"<div class='guru-check'>{'✅' if roe>0.15 else '❌'} <b>芒格优选</b>: ROE > 15% (当前 {fmt_pct(roe)})</div>", unsafe_allow_html=True)
+        st.markdown(f"<div class='guru-check'>{'✅' if gm and gm>0.4 else '❌'} <b>巴菲特护城河</b>: 毛利率 > 40% (当前 {fmt_pct(gm)})</div>", unsafe_allow_html=True)
+        st.markdown(f"<div class='guru-check'>{'✅' if roe and roe>0.15 else '❌'} <b>芒格优选</b>: ROE > 15% (当前 {fmt_pct(roe)})</div>", unsafe_allow_html=True)
         st.markdown(f"<div class='guru-check'>{'✅' if peg and peg < 1 else '❌'} <b>林奇法则</b>: PEG < 1.0 (当前 {peg})</div>", unsafe_allow_html=True)
 
         st.markdown("<div class='report-title'>4. 📞 尽职调查</div>", unsafe_allow_html=True)
@@ -518,21 +453,20 @@ elif page == "🗓️ 财报地图":
     else: st.info("数据更新中...")
 
 else:
-    # [RECOVER] Full Wiki from V104
     st.title("📚 摩根·功能说明书 (Wiki)")
     st.markdown("""
-    <div class='wiki-card'><div class='wiki-title'>1. 视野·交易计划 (Vision L-Box)</div><div class='wiki-text'><b>核心逻辑：</b> L战法系统。<br><b>黄框</b>：系统大脑。<br><span class='wiki-tag'>R1/R2</span> 压力位。<br><span class='wiki-tag'>S1/S2</span> 支撑位。</div></div>
-    <div class='wiki-card'><div class='wiki-title'>2. 神奇九转 (TD Sequential)</div><div class='wiki-text'><b>原理：</b> 寻找衰竭点。<br><span style='color:#f87171'><b>红色 9</b></span>：上涨力竭(卖)。<br><span style='color:#4ade80'><b>绿色 9</b></span>：下跌力竭(买)。</div></div>
-    <div class='wiki-card'><div class='wiki-title'>3. VWAP (机构线)</div><div class='wiki-text'><b>原理：</b> 机构持仓成本。<br>股价 > VWAP：机构护盘。<br>股价 < VWAP：机构出货。</div></div>
-    <div class='wiki-card'><div class='wiki-title'>4. 蒙特卡洛预测 (Monte Carlo)</div><div class='wiki-text'><b>原理：</b> 模拟未来30天100种走势。<br><b>悲观底线</b>：95%概率不跌破的止损位。</div></div>
-    <div class='wiki-card'><div class='wiki-title'>5. 六维雷达 (Spider)</div><div class='wiki-text'><b>原理：</b> 公司体检表。面积越大，基本面越完美。</div></div>
-    <div class='wiki-card'><div class='wiki-title'>6. SuperTrend</div><div class='wiki-text'><b>原理：</b> 趋势跟踪。<b>绿色</b>持有，<b>红色</b>空仓。</div></div>
-    <div class='wiki-card'><div class='wiki-title'>7. FVG (缺口)</div><div class='wiki-text'><b>原理：</b> 机构暴力拉升留下的<b>紫色方块</b>。股价常会回调填补。</div></div>
-    <div class='wiki-card'><div class='wiki-title'>8. Z-Score (乖离)</div><div class='wiki-text'><b>原理：</b> 统计学偏差。<br>>2: 涨过头(回调风险) <br><-2: 跌过头(反弹机会)。</div></div>
-    <div class='wiki-card'><div class='wiki-title'>9. 唐奇安通道</div><div class='wiki-text'><b>原理：</b> 海龟交易法。<br>突破上轨买，跌破下轨卖。</div></div>
-    <div class='wiki-card'><div class='wiki-title'>10. Ichimoku (一目均衡)</div><div class='wiki-text'><b>原理：</b> 云带系统。<br>股价在云上为多，云下为空。</div></div>
-    <div class='wiki-card'><div class='wiki-title'>11. ADX (趋势强度)</div><div class='wiki-text'><b>原理：</b> 判断有无趋势。<br>>25: 趋势强劲。<br><20: 震荡市(休息)。</div></div>
-    <div class='wiki-card'><div class='wiki-title'>12. HMA (赫尔均线)</div><div class='wiki-text'><b>原理：</b> 零滞后均线，比MA更快。</div></div>
-    <div class='wiki-card'><div class='wiki-title'>13. 凯利公式</div><div class='wiki-text'><b>原理：</b> 科学仓位管理。告诉你这把牌该下注多少钱。</div></div>
-    <div class='wiki-card'><div class='wiki-title'>14. CCI (顺势指标)</div><div class='wiki-text'><b>原理：</b> 抓极端行情。<br>>100: 超买。<br><-100: 超卖。</div></div>
+    <div class='wiki-card'><div class='wiki-title'>1. 视野·交易计划 (Vision L-Box)</div><div class='wiki-text'>核心逻辑：L战法系统。通过均线、前高前低自动计算支撑位(S1)与压力位(R1)。</div></div>
+    <div class='wiki-card'><div class='wiki-title'>2. 神奇九转 (TD Sequential)</div><div class='wiki-text'>原理：寻找衰竭点。红色9上涨力竭，绿色9下跌力竭。</div></div>
+    <div class='wiki-card'><div class='wiki-title'>3. VWAP (机构线)</div><div class='wiki-text'>原理：机构持仓成本。股价在VWAP之上代表机构护盘。</div></div>
+    <div class='wiki-card'><div class='wiki-title'>4. 蒙特卡洛预测 (Monte Carlo)</div><div class='wiki-text'>原理：模拟未来30天100种走势。悲观底线：95%概率不跌破的止损位。</div></div>
+    <div class='wiki-card'><div class='wiki-title'>5. 六维雷达 (Spider)</div><div class='wiki-text'>原理：公司体检表。面积越大，基本面越完美。</div></div>
+    <div class='wiki-card'><div class='wiki-title'>6. SuperTrend</div><div class='wiki-text'>原理：趋势跟踪。绿色持有，红色空仓。</div></div>
+    <div class='wiki-card'><div class='wiki-title'>7. FVG (缺口)</div><div class='wiki-text'>原理：机构暴力拉升留下的紫色方块。股价常会回调填补。</div></div>
+    <div class='wiki-card'><div class='wiki-title'>8. Z-Score (乖离)</div><div class='wiki-text'>原理：统计学偏差。>2: 涨过头(回调风险) <-2: 跌过头(反弹机会)。</div></div>
+    <div class='wiki-card'><div class='wiki-title'>9. 唐奇安通道</div><div class='wiki-text'>原理：海龟交易法。突破上轨买，跌破下轨卖。</div></div>
+    <div class='wiki-card'><div class='wiki-title'>10. Ichimoku (一目均衡)</div><div class='wiki-text'>原理：云带系统。股价在云上为多，云下为空。</div></div>
+    <div class='wiki-card'><div class='wiki-title'>11. ADX (趋势强度)</div><div class='wiki-text'>原理：判断有无趋势。>25: 趋势强劲。<20: 震荡市(休息)。</div></div>
+    <div class='wiki-card'><div class='wiki-title'>12. HMA (赫尔均线)</div><div class='wiki-text'>原理：零滞后均线，比MA更快。</div></div>
+    <div class='wiki-card'><div class='wiki-title'>13. 凯利公式</div><div class='wiki-text'>原理：科学仓位管理。告诉你这把牌该下注多少钱。</div></div>
+    <div class='wiki-card'><div class='wiki-title'>14. CCI (顺势指标)</div><div class='wiki-text'>原理：抓极端行情。>100: 超买。<-100: 超卖。</div></div>
     """, unsafe_allow_html=True)
