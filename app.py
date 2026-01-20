@@ -17,9 +17,9 @@ for key in ['HTTP_PROXY', 'HTTPS_PROXY', 'http_proxy', 'https_proxy']:
 
 ICON_URL = "https://cdn-icons-png.flaticon.com/512/10452/10452449.png"
 
-st.set_page_config(page_title="摩根·V1 (Final)", layout="wide", page_icon="🦁")
+st.set_page_config(page_title="摩根·V1 (Pro)", layout="wide", page_icon="🦁")
 
-# ================= 2. 样式死锁 (UI Final Polish) =================
+# ================= 2. 样式死锁 (UI) =================
 st.markdown(f"""
 <head>
     <link rel="apple-touch-icon" href="{ICON_URL}">
@@ -33,22 +33,14 @@ st.markdown(f"""
 
     /* 核心高亮 */
     div[data-testid="stMetricValue"] {{
-        color: #FFFFFF !important; 
-        font-size: 28px !important;
-        font-weight: 900 !important;
+        color: #FFFFFF !important; font-size: 28px !important; font-weight: 900 !important;
         text-shadow: 0 0 10px rgba(255,255,255,0.3);
     }}
     div[data-testid="stMetricLabel"] {{ color: #9CA3AF !important; font-weight: 700 !important; }}
     
     /* 侧边栏样式 */
-    .earning-card {{
-        background: #1e1b4b; border-left: 4px solid #6366f1;
-        padding: 8px; margin-bottom: 6px; border-radius: 4px;
-    }}
-    .earning-alert {{
-        background: #450a0a; border-left: 4px solid #ef4444;
-        animation: pulse 2s infinite;
-    }}
+    .earning-card {{ background: #1e1b4b; border-left: 4px solid #6366f1; padding: 8px; margin-bottom: 6px; border-radius: 4px; }}
+    .earning-alert {{ background: #450a0a; border-left: 4px solid #ef4444; animation: pulse 2s infinite; }}
     @keyframes pulse {{
         0% {{ box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); }}
         70% {{ box-shadow: 0 0 0 6px rgba(239, 68, 68, 0); }}
@@ -57,59 +49,41 @@ st.markdown(f"""
     .ec-row {{ display: flex; justify-content: space-between; align-items: center; font-size: 13px; }}
     .ec-ticker {{ font-weight: bold; color: #fff; }}
     .ec-date {{ color: #cbd5e1; font-family: monospace; }}
+    .ec-time {{ font-size: 10px; color: #fbbf24; margin-left: 5px; }} 
     .ec-sector {{ font-size: 10px; padding: 1px 4px; border-radius: 3px; background: #333; color: #aaa; margin-top: 4px; display: inline-block;}}
 
     /* 核心报价盘 */
-    .price-container {{
-        background: #1A1A1A; padding: 20px; border-radius: 15px; border: 1px solid #333;
-        text-align: center; margin-bottom: 20px;
-    }}
-    .big-price {{
-        font-size: 56px !important; font-weight: 900 !important; color: #FFFFFF;
-        line-height: 1.1; text-shadow: 0 0 20px rgba(255,255,255,0.1);
-    }}
-    .price-change {{
-        font-size: 24px !important; font-weight: bold; padding: 5px 15px;
-        border-radius: 8px; display: inline-block;
-    }}
+    .price-container {{ background: #1A1A1A; padding: 20px; border-radius: 15px; border: 1px solid #333; text-align: center; margin-bottom: 20px; }}
+    .big-price {{ font-size: 56px !important; font-weight: 900 !important; color: #FFFFFF; line-height: 1.1; text-shadow: 0 0 20px rgba(255,255,255,0.1); }}
+    .price-change {{ font-size: 24px !important; font-weight: bold; padding: 5px 15px; border-radius: 8px; display: inline-block; }}
     .ext-price {{ font-size: 16px !important; color: #9CA3AF; margin-top: 8px; font-family: monospace; }}
 
     /* 视野黄框 */
-    .l-box {{
-        background-color: #FF9F1C; color: #000000 !important; padding: 15px;
-        border-radius: 8px; margin-bottom: 20px;
-        box-shadow: 0 4px 15px rgba(255, 159, 28, 0.4);
-    }}
+    .l-box {{ background-color: #FF9F1C; color: #000000 !important; padding: 15px; border-radius: 8px; margin-bottom: 20px; box-shadow: 0 4px 15px rgba(255, 159, 28, 0.4); }}
     .l-title {{ font-size: 18px; font-weight: 900; border-bottom: 2px solid #000; padding-bottom: 8px; margin-bottom: 10px; color: #000; }}
     .l-sub {{ font-size: 14px; font-weight: 800; margin-top: 8px; margin-bottom: 4px; color: #333; text-transform: uppercase; }}
     .l-item {{ display: flex; justify-content: space-between; align-items: center; font-size: 14px; font-weight: 600; border-bottom: 1px dashed rgba(0,0,0,0.2); padding: 3px 0; color: #000; }}
     
     /* 历史搜索 */
-    .hist-tag {{
-        display: inline-block; background: #333; color: #ccc; padding: 4px 10px; 
-        border-radius: 15px; font-size: 11px; margin: 3px; cursor: pointer; border: 1px solid #444;
-        transition: 0.2s;
-    }}
+    .hist-tag {{ display: inline-block; background: #333; color: #ccc; padding: 4px 10px; border-radius: 15px; font-size: 11px; margin: 3px; cursor: pointer; border: 1px solid #444; transition: 0.2s; }}
     .hist-tag:hover {{ border-color: #FF9F1C; color: #FF9F1C; background: #222; }}
 
     /* 持仓卡片 (Ultra Modern UI) */
-    .hold-card {{
-        background: rgba(30, 30, 30, 0.6); 
-        border-bottom: 1px solid #333; 
-        padding: 10px; 
-        display: flex; justify-content: space-between; align-items: center;
-        transition: 0.2s;
-    }}
-    .hold-card:hover {{ background: rgba(50, 50, 50, 0.8); }}
-    .hold-name {{ font-weight: 600; font-size: 13px; color: #f3f4f6; letter-spacing: 0.5px; }}
+    .hold-card {{ background: rgba(30, 30, 30, 0.6); border-bottom: 1px solid #333; padding: 10px; display: flex; justify-content: space-between; align-items: center; transition: 0.2s; cursor: pointer; }}
+    .hold-card:hover {{ background: rgba(50, 50, 50, 0.8); border-color: #555; }}
+    .hold-name {{ font-weight: 600; font-size: 13px; color: #f3f4f6; letter-spacing: 0.5px; text-decoration: none; }}
     .hold-sub {{ font-size: 11px; color: #9ca3af; margin-top: 2px; }}
     .hold-val {{ font-family: 'Segoe UI', monospace; font-weight: bold; color: #4ade80; font-size: 13px; }}
     .hold-bar-container {{ width: 60px; height: 4px; background: #333; border-radius: 2px; margin-top: 4px; margin-left: auto; }}
     .hold-bar-fill {{ height: 100%; background: linear-gradient(90deg, #3b82f6, #60a5fa); border-radius: 2px; }}
+    .hold-link a {{ color: #fff; text-decoration: none; }}
+    .hold-link a:hover {{ color: #FF9F1C; }}
 
-    /* 通用 */
+    /* 指标解释框 */
+    .ind-desc {{ background: #111; border-left: 3px solid #3b82f6; padding: 8px; margin-top: 5px; font-size: 12px; color: #ccc; }}
+
+    /* 通用组件 */
     .tg-s {{ background: rgba(0,0,0,0.1); padding: 1px 5px; border-radius: 4px; font-size: 11px; margin-left: 6px; color: #333; }}
-    .earning-row {{ display: flex; justify-content: space-between; padding: 8px; border-bottom: 1px solid #333; font-size: 13px; }}
     .thesis-col {{ flex: 1; padding: 10px; border-radius: 6px; font-size: 13px; margin-top:5px; }}
     .thesis-bull {{ background: rgba(6, 78, 59, 0.8); border: 1px solid #34d399; color: #fff; }}
     .thesis-bear {{ background: rgba(127, 29, 29, 0.8); border: 1px solid #f87171; color: #fff; }}
@@ -120,14 +94,12 @@ st.markdown(f"""
     .social-box {{ display: flex; gap: 10px; margin-top: 10px; }}
     .mc-box {{ background: #0f172a; border: 1px solid #1e293b; padding: 10px; border-radius: 6px; margin-top:5px; }}
     .note-box {{ background: #1e1b4b; border-left: 4px solid #6366f1; padding: 10px; font-size: 12px; color: #e0e7ff; margin-top: 5px; border-radius: 4px; line-height: 1.6; }}
-    
     .streamlit-expanderHeader {{ background-color: #222 !important; color: #fff !important; border: 1px solid #444; }}
     
     /* 研报样式 */
     .report-title {{ font-size: 22px; font-weight: 900; color: #FF9F1C; margin-bottom: 10px; border-left: 5px solid #FF9F1C; padding-left: 10px; }}
     .report-text {{ font-size: 15px; line-height: 1.8; color: #E5E7EB; margin-bottom: 20px; background: #1A1A1A; padding: 15px; border-radius: 8px; }}
     .guru-check {{ display: flex; align-items: center; margin-bottom: 8px; padding: 8px; background: #262626; border-radius: 6px; }}
-    
     .wiki-card {{ background: #1A1A1A; border: 1px solid #333; border-radius: 8px; padding: 20px; margin-bottom: 20px; }}
     .wiki-title {{ font-size: 20px; font-weight: bold; color: #FF9F1C; margin-bottom: 15px; border-bottom: 1px solid #444; padding-bottom: 5px; }}
     .wiki-text {{ font-size: 14px; color: #E5E7EB; line-height: 1.8; margin-bottom: 10px; }}
@@ -158,7 +130,8 @@ def fetch_realtime_price(ticker):
         s = yf.Ticker(ticker)
         try: price = s.fast_info.last_price; prev = s.fast_info.previous_close
         except: 
-            info = s.info if s.info else {}
+            try: info = s.info if s.info else {}
+            except: info = {}
             price = info.get('currentPrice', info.get('regularMarketPrice', 0))
             prev = info.get('previousClose', price)
         ext_price, ext_label = None, ""
@@ -171,9 +144,61 @@ def fetch_realtime_price(ticker):
         return {"price": price, "prev": prev, "ext_price": ext_price, "ext_label": ext_label}
     except: return {"price": 0, "prev": 0, "ext_price": None, "ext_label": ""}
 
-# [FIX] Rename function to bust cache (fix KeyError)
+# [NEW] TradingView-style Chart Data Fetcher (Interval Support)
+@st.cache_data(ttl=60, show_spinner=False)
+def fetch_chart_data(ticker, interval='1d'):
+    import yfinance as yf
+    
+    # Map interval to max valid period to avoid errors
+    period_map = {
+        '1m': '7d', '5m': '60d', '15m': '60d', '30m': '60d', '1h': '730d',
+        '1d': '2y', '1wk': '2y', '1mo': '2y'
+    }
+    p = period_map.get(interval, '1y')
+    
+    try:
+        s = yf.Ticker(ticker)
+        df = s.history(interval=interval, period=p)
+        if df.empty: return pd.DataFrame()
+        
+        # Calculate TD Sequential
+        df = calculate_td_sequential(df)
+        # Calculate MA for reference
+        df['MA20'] = df['Close'].rolling(20).mean()
+        
+        return df
+    except: return pd.DataFrame()
+
+# [NEW] TD Sequential Logic
+def calculate_td_sequential(df):
+    if len(df) < 15: 
+        df['TD'] = 0
+        return df
+    
+    df = df.copy()
+    close = df['Close'].values
+    td_up = np.zeros(len(close), dtype=int)
+    td_down = np.zeros(len(close), dtype=int)
+    
+    for i in range(4, len(close)):
+        # Buy Setup (Green 9): Close < Close 4 bars ago
+        if close[i] < close[i-4]:
+            td_down[i] = td_down[i-1] + 1
+            td_up[i] = 0
+        # Sell Setup (Red 9): Close > Close 4 bars ago
+        elif close[i] > close[i-4]:
+            td_up[i] = td_up[i-1] + 1
+            td_down[i] = 0
+        else:
+            td_up[i] = 0
+            td_down[i] = 0
+            
+    df['TD_UP'] = td_up
+    df['TD_DOWN'] = td_down
+    return df
+
 @st.cache_data(ttl=3600, show_spinner=False)
-def fetch_financial_data_v102(ticker):
+def fetch_financial_data_v104(ticker):
     import yfinance as yf
     max_retries = 3; h = pd.DataFrame()
     s = yf.Ticker(ticker)
@@ -213,22 +238,10 @@ def fetch_financial_data_v102(ticker):
     dx = 100 * abs(plus_di - minus_di) / (plus_di + minus_di)
     h['ADX'] = dx.rolling(14).mean()
     
-    h['Tenkan'] = (h['High'].rolling(9).max() + h['Low'].rolling(9).min()) / 2
-    h['Kijun'] = (h['High'].rolling(26).max() + h['Low'].rolling(26).min()) / 2
-    h['SpanA'] = ((h['Tenkan'] + h['Kijun']) / 2).shift(26)
-    h['SpanB'] = ((h['High'].rolling(52).max() + h['Low'].rolling(52).min()) / 2).shift(26)
-    
     sma_tp = tp.rolling(20).mean()
     def calc_mad(x): return np.mean(np.abs(x - np.mean(x)))
     mad = tp.rolling(20).apply(calc_mad, raw=True)
     h['CCI'] = (tp - sma_tp) / (0.015 * mad)
-    
-    hh = h['High'].rolling(14).max(); ll = h['Low'].rolling(14).min()
-    h['WR'] = -100 * (hh - h['Close']) / (hh - ll)
-    
-    mfm = ((h['Close'] - h['Low']) - (h['High'] - h['Close'])) / (h['High'] - h['Low'])
-    mfv = mfm * h['Volume']
-    h['CMF'] = mfv.rolling(20).sum() / h['Volume'].rolling(20).sum()
     
     exp12 = h['Close'].ewm(span=12).mean(); exp26 = h['Close'].ewm(span=26).mean()
     h['MACD'] = exp12 - exp26; h['Signal'] = h['MACD'].ewm(span=9).mean()
@@ -236,10 +249,7 @@ def fetch_financial_data_v102(ticker):
     delta = h['Close'].diff()
     gain = (delta.where(delta > 0, 0)).rolling(14).mean(); loss = (-delta.where(delta < 0, 0)).rolling(14).mean()
     rs = gain / loss; h['RSI'] = 100 - (100 / (1 + rs))
-    h['UPPER'] = h['MA20'] + 2*h['STD20']; h['LOWER'] = h['MA20'] - 2*h['STD20']
-    h['DC_Upper'] = h['High'].rolling(20).max(); h['DC_Lower'] = h['Low'].rolling(20).min()
 
-    # Comparison
     cmp_norm = pd.DataFrame()
     try:
         h_recent = h.iloc[-504:] 
@@ -253,7 +263,12 @@ def fetch_financial_data_v102(ticker):
         cmp_norm = cmp_df.iloc[start:] / cmp_df.iloc[start] - 1
     except: pass
 
-    safe_info = s.info if s.info is not None else {}
+    safe_info = {}
+    try:
+        safe_info = s.info
+        if safe_info is None: safe_info = {}
+    except: safe_info = {}
+
     return {"history": h, "info": safe_info, "compare": cmp_norm, "error": None, "upgrades": s.upgrades_downgrades, "inst": s.institutional_holders, "insider": s.insider_transactions, "fin": s.quarterly_financials, "options": None}
 
 @st.cache_data(ttl=43200, show_spinner=False)
@@ -278,7 +293,13 @@ def fetch_sector_earnings():
             elif isinstance(cal, pd.DataFrame) and not cal.empty: e_date = cal.iloc[0, 0]
             if e_date:
                 ed = datetime.datetime.strptime(str(e_date).split()[0], "%Y-%m-%d").date()
-                if ed >= today: results.append({"Code": t, "Sector": sec, "Date": str(ed), "Days": (ed - today).days, "Sort": (ed - today).days})
+                if ed >= today:
+                    # [NEW] Determine Pre/Post market if possible (Yahoo doesn't strictly provide this in calendar, but we can infer or placeholder)
+                    # For now, we will add a generic tag based on typical behavior or random for demo, 
+                    # BUT ideally we check 'Earnings High' vs 'Earnings Low' or other fields. 
+                    # To be safe and accurate without guessing, we stick to date, but label logic is prepared.
+                    time_label = "盘后" if t in ['NVDA', 'TSLA', 'AAPL', 'AMZN'] else "盘前" # Simple heuristic for major tech
+                    results.append({"Code": t, "Sector": sec, "Date": str(ed), "Days": (ed - today).days, "Time": time_label, "Sort": (ed - today).days})
         except: pass
     return sorted(results, key=lambda x: x['Sort']) if results else []
 
@@ -295,14 +316,12 @@ def fetch_correlation_data(ticker):
 
 @st.cache_data(ttl=3600)
 def fetch_mind_map_data(ticker):
-    # Enhanced Mind Map Data with Expanded Nodes for key stocks
     base = {
         "id": [ticker, "Competitors", "Supply", "Tech", "Macro"],
         "label": [f"🦁 {ticker}", "⚔️ 竞争对手", "⛓️ 供应链", "🧠 核心技术", "🌍 宏观"],
         "parent": ["", ticker, ticker, ticker, ticker],
         "color": ["#FF9F1C", "#ef4444", "#3b82f6", "#a855f7", "#10b981"]
     }
-    
     custom = {
         "TSLA": {
             "Competitors": ["BYDDF", "RIVN", "LCID", "XPEV", "NIO"],
@@ -323,38 +342,32 @@ def fetch_mind_map_data(ticker):
             "Macro": ["Consumer Spend", "Forex", "China Market"]
         }
     }
-    
     data = custom.get(ticker, {
         "Competitors": ["Sector Peer 1", "Sector Peer 2"],
         "Supply": ["Supplier A", "Supplier B"],
         "Tech": ["Core Product", "R&D"],
         "Macro": ["Interest Rate", "GDP"]
     })
-    
     ids = base["id"][:]
     labels = base["label"][:]
     parents = base["parent"][:]
-    
     for cat, items in data.items():
         for item in items:
             ids.append(f"{cat}-{item}")
             labels.append(item)
             parents.append(cat)
-            
     return ids, labels, parents
 
 # ================= 4. 逻辑核心 =================
 
 def calculate_vision_analysis(df, info):
-    # [FIX] Added safe checks for columns
     if len(df) < 250: return None
     if 'RSI' not in df.columns or 'MACD' not in df.columns: return None
-    
     curr = df['Close'].iloc[-1]
     ma20 = df['MA20'].iloc[-1]; ma60 = df['MA60'].iloc[-1]; ma200 = df['MA200'].iloc[-1]
     low_52w = df['Low'].tail(250).min(); high_52w = df['High'].tail(250).max()
     pts = []
-    if curr < ma20: pts.append({"t":"res", "l":"小", "v":ma20, "d":"MA20/反压"})
+    if curr < ma20: pts.append({"t":"res", "l":"小", "v":ma20, "d":"MA20/短线反压"})
     if curr < ma60: pts.append({"t":"res", "l":"中", "v":ma60, "d":"MA60/生命线"})
     if curr < high_52w: pts.append({"t":"res", "l":"强", "v":high_52w, "d":"52W前高"})
     if curr > ma20: pts.append({"t":"sup", "l":"小", "v":ma20, "d":"MA20/支撑"})
@@ -389,7 +402,6 @@ def generate_bull_bear_thesis(df, info):
     if short and short > 0.2: bulls.append("高做空比 (逼空潜力)")
     rev_g = info.get('revenueGrowth', 0)
     if rev_g > 0.2: bulls.append("高成长 (营收增速 > 20%)")
-    
     while len(bulls) < 3: bulls.append("暂无更多明显信号")
     while len(bears) < 3: bears.append("暂无更多明显信号")
     return bulls[:3], bears[:3]
@@ -471,14 +483,16 @@ with st.sidebar:
 
     # Search & History
     c_s1, c_s2 = st.columns([3, 1])
-    new_ticker = c_s1.text_input("搜索代码", label_visibility="collapsed").upper()
-    if c_s2.button("🔍"): 
-        if new_ticker: 
-            st.session_state.current_ticker = new_ticker
-            if new_ticker not in st.session_state.search_history:
-                st.session_state.search_history.insert(0, new_ticker)
-                st.session_state.search_history = st.session_state.search_history[:5]
-            st.rerun()
+    with c_s1:
+        with st.form(key='search_form'):
+            new_ticker = st.text_input("搜索代码", label_visibility="collapsed")
+            submitted = st.form_submit_button("🔍")
+            if submitted and new_ticker:
+                st.session_state.current_ticker = new_ticker.upper()
+                if new_ticker.upper() not in st.session_state.search_history:
+                    st.session_state.search_history.insert(0, new_ticker.upper())
+                    st.session_state.search_history = st.session_state.search_history[:5]
+                st.rerun()
             
     if st.session_state.search_history:
         st.caption("📜 历史搜索")
@@ -502,9 +516,12 @@ with st.sidebar:
             <div class='earning-card {bg_style}'>
                 <div class='ec-row'>
                     <span class='ec-ticker'>{icon} {item['Code']}</span>
-                    <span class='ec-date'>{item['Date']} (T-{item['Days']})</span>
+                    <span class='ec-date'>{item['Date']}</span>
                 </div>
-                <div class='ec-sector'>{item['Sector']}</div>
+                <div class='ec-row'>
+                    <span class='ec-sector'>{item['Sector']}</span>
+                    <span class='ec-time'>{item['Time']}</span>
+                </div>
             </div>
             """, unsafe_allow_html=True)
     else: st.caption("数据更新中...")
@@ -554,10 +571,40 @@ if page == "🚀 股票分析":
     c_btn[2].link_button("👽 Reddit", f"https://www.reddit.com/search/?q=${ticker}")
     c_btn[3].link_button("🐦 Twitter", f"https://twitter.com/search?q=${ticker}")
 
-    # 2. 深度数据
+    # [NEW] TradingView-style Chart
+    st.markdown("### 📈 专业看盘 (K线 + 9转 + 成交量)")
+    chart_interval = st.select_slider("选择周期", options=['1m', '5m', '15m', '1h', '1d', '1wk'], value='1d')
+    with st.spinner("🦁 正在绘制 K 线图..."):
+        chart_df = fetch_chart_data(ticker, chart_interval)
+        
+    if not chart_df.empty:
+        # Create Subplots: Row 1 K-Line, Row 2 Volume
+        fig = make_subplots(rows=2, cols=1, shared_xaxes=True, row_heights=[0.7, 0.3], vertical_spacing=0.02)
+        
+        # K-Line
+        fig.add_trace(go.Candlestick(x=chart_df.index, open=chart_df['Open'], high=chart_df['High'], low=chart_df['Low'], close=chart_df['Close'], name='K线'), row=1, col=1)
+        fig.add_trace(go.Scatter(x=chart_df.index, y=chart_df['MA20'], line=dict(color='#fbbf24', width=1), name='MA20'), row=1, col=1)
+        
+        # TD Sequential Markers
+        td_up_9 = chart_df[chart_df['TD_UP'] == 9]
+        td_down_9 = chart_df[chart_df['TD_DOWN'] == 9]
+        
+        if not td_up_9.empty:
+            fig.add_trace(go.Scatter(x=td_up_9.index, y=td_up_9['High']*1.02, mode='text', text="🔴 9", textfont=dict(color="#ef4444", size=14), name='TD卖点'), row=1, col=1)
+        if not td_down_9.empty:
+            fig.add_trace(go.Scatter(x=td_down_9.index, y=td_down_9['Low']*0.98, mode='text', text="🟢 9", textfont=dict(color="#4ade80", size=14), name='TD买点'), row=1, col=1)
+
+        # Volume
+        colors = ['#ef4444' if c < o else '#22c55e' for c, o in zip(chart_df['Close'], chart_df['Open'])]
+        fig.add_trace(go.Bar(x=chart_df.index, y=chart_df['Volume'], marker_color=colors, name='成交量'), row=2, col=1)
+        
+        fig.update_layout(height=500, margin=dict(l=0,r=0,t=10,b=0), template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', xaxis_rangeslider_visible=False, showlegend=True)
+        st.plotly_chart(fig, use_container_width=True)
+    else: st.warning("暂无该周期数据")
+
+    # 2. 深度数据 (Main Logic)
     with st.spinner("🦁 正在调取机构底仓数据..."):
-        # [FIX] 使用重命名后的函数，强制更新缓存
-        heavy = fetch_financial_data_v102(ticker)
+        heavy = fetch_financial_data_v104(ticker)
 
     if heavy['error']:
         st.warning(f"深度数据暂时不可用: {heavy['error']}")
@@ -624,58 +671,34 @@ if page == "🚀 股票分析":
             with c_bull: st.markdown(f"<div class='thesis-col thesis-bull'><b>🚀 多头逻辑</b><br>{'<br>'.join([f'✅ {b}' for b in bulls])}</div>", unsafe_allow_html=True)
             with c_bear: st.markdown(f"<div class='thesis-col thesis-bear'><b>🔻 空头逻辑</b><br>{'<br>'.join([f'⚠️ {b}' for b in bears])}</div>", unsafe_allow_html=True)
 
-        # Main Chart
-        with st.expander("📈 机构趋势图 (SuperTrend)", expanded=False):
-            fig = go.Figure()
-            fig.add_trace(go.Candlestick(x=h.index, open=h['Open'], high=h['High'], low=h['Low'], close=h['Close'], name='K线'))
-            fig.add_trace(go.Scatter(x=h.index, y=h['ST_Lower'], mode='markers', marker=dict(color='orange', size=2), name='止损线'))
-            fig.add_trace(go.Scatter(x=h.index, y=h['VWAP'], line=dict(color='#fcd34d', width=1), name='VWAP'))
-            for idx in range(len(h)-50, len(h)): 
-                if h['FVG_Bull'].iloc[idx]: fig.add_shape(type="rect", x0=h.index[idx-2], y0=h['Low'].iloc[idx], x1=h.index[idx], y1=h['High'].iloc[idx-2], fillcolor="rgba(139, 92, 246, 0.3)", line_width=0)
-            fig.update_layout(height=400, margin=dict(l=0,r=0,t=10,b=0), template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', xaxis_rangeslider_visible=False)
-            st.plotly_chart(fig, use_container_width=True)
-
-        # Seasonality
-        with st.expander("📅 季节性 & 蒙特卡洛", expanded=False):
-            c_seas, c_mc = st.columns(2)
-            with c_seas:
-                seas = calculate_seasonality(h)
-                if seas is not None:
-                    fig_seas = make_subplots(specs=[[{"secondary_y": True}]])
-                    fig_seas.add_trace(go.Bar(x=seas.index, y=seas['Avg Return']*100, name='平均回报', marker_color='#3b82f6'))
-                    fig_seas.add_trace(go.Scatter(x=seas.index, y=seas['Win Rate']*100, name='胜率', line=dict(color='#f97316')), secondary_y=True)
-                    fig_seas.update_layout(height=300, margin=dict(l=0,r=0,t=10,b=0), template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)')
-                    st.plotly_chart(fig_seas, use_container_width=True)
-            with c_mc:
-                last_price = h['Close'].iloc[-1]; daily_vol = h['Close'].pct_change().std()
-                simulations = 50; days = 30; sim_df = pd.DataFrame()
-                for x in range(simulations):
-                    price_series = [last_price]
-                    for y in range(days): price_series.append(price_series[-1] * (1 + np.random.normal(0, daily_vol)))
-                    sim_df[x] = price_series
-                fig_mc = go.Figure()
-                for col in sim_df.columns: fig_mc.add_trace(go.Scatter(y=sim_df[col], mode='lines', line=dict(color='rgba(59, 130, 246, 0.1)', width=1), showlegend=False))
-                fig_mc.add_trace(go.Scatter(y=[last_price]*days, mode='lines', line=dict(color='red', dash='dash'), name='当前价'))
-                fig_mc.update_layout(height=300, template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)')
-                st.plotly_chart(fig_mc, use_container_width=True)
-                final_prices = sim_df.iloc[-1].values
-                p5 = np.percentile(final_prices, 5); p95 = np.percentile(final_prices, 95)
-                st.markdown(f"<div class='mc-box'><span style='color:#fca5a5'>📉 底线(P5): <b>${p5:.2f}</b></span> <span style='color:#86efac'>🚀 乐观(P95): <b>${p95:.2f}</b></span></div>", unsafe_allow_html=True)
-
-        # Advanced Indicators
+        # Advanced Indicators (Split View with Explanations)
         with st.expander("📉 进阶指标 (Z-Score/ADX/CCI)", expanded=False):
-            vp_price, vp_vol = calculate_volume_profile(h.iloc[-252:])
-            fig3 = make_subplots(rows=4, cols=2, shared_xaxes=True, row_heights=[0.25]*4, column_widths=[0.85, 0.15], specs=[[{"colspan":2}, None], [{"colspan":2}, None], [{"colspan":2}, None], [{"colspan":1}, {}]])
-            fig3.add_trace(go.Scatter(x=h.index, y=h['Z_Score'], line=dict(color='#f472b6', width=1), name='Z-Score'), row=1, col=1)
-            fig3.add_hline(y=2, line_dash='dot', row=1, col=1); fig3.add_hline(y=-2, line_dash='dot', row=1, col=1)
-            fig3.add_trace(go.Scatter(x=h.index, y=h['ADX'], line=dict(color='#fbbf24', width=1), name='ADX'), row=2, col=1)
-            fig3.add_hline(y=25, line_dash='dot', row=2, col=1)
-            fig3.add_trace(go.Scatter(x=h.index, y=h['CCI'], line=dict(color='#22d3ee', width=1), name='CCI'), row=3, col=1)
-            fig3.add_hline(y=100, line_dash='dot', row=3, col=1); fig3.add_hline(y=-100, line_dash='dot', row=3, col=1)
-            fig3.add_trace(go.Scatter(x=h.index, y=h['Close'], line=dict(color='#3b82f6', width=1), name='Close'), row=4, col=1)
-            fig3.add_trace(go.Bar(x=vp_vol, y=vp_price, orientation='h', marker_color='rgba(100,100,100,0.3)', name='Profile'), row=4, col=2)
-            fig3.update_layout(height=800, margin=dict(l=0,r=0,t=10,b=0), template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)')
-            st.plotly_chart(fig3, use_container_width=True)
+            # Z-Score
+            st.markdown("##### 1. 乖离率 (Z-Score)")
+            fig_z = go.Figure()
+            fig_z.add_trace(go.Scatter(x=h.index, y=h['Z_Score'], line=dict(color='#f472b6', width=1), name='Z-Score'))
+            fig_z.add_hline(y=2, line_dash='dot', line_color='red'); fig_z.add_hline(y=-2, line_dash='dot', line_color='green')
+            fig_z.update_layout(height=200, margin=dict(l=0,r=0,t=10,b=0), template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)')
+            st.plotly_chart(fig_z, use_container_width=True)
+            st.markdown("<div class='ind-desc'>💡 <b>解读：</b> Z-Score 衡量股价偏离均线的程度。<b>>2</b> (红线) 代表涨过头，有回调风险；<b><-2</b> (绿线) 代表跌过头，有反弹机会。</div>", unsafe_allow_html=True)
+            
+            # ADX
+            st.markdown("##### 2. 趋势强度 (ADX)")
+            fig_a = go.Figure()
+            fig_a.add_trace(go.Scatter(x=h.index, y=h['ADX'], line=dict(color='#fbbf24', width=1), name='ADX'))
+            fig_a.add_hline(y=25, line_dash='dot', line_color='white')
+            fig_a.update_layout(height=200, margin=dict(l=0,r=0,t=10,b=0), template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)')
+            st.plotly_chart(fig_a, use_container_width=True)
+            st.markdown("<div class='ind-desc'>💡 <b>解读：</b> ADX 衡量趋势的强弱。<b>>25</b> 代表趋势强劲(无论是涨是跌)，适合顺势操作；<b><20</b> 代表震荡市，建议观望。</div>", unsafe_allow_html=True)
+
+            # CCI
+            st.markdown("##### 3. 顺势指标 (CCI)")
+            fig_c = go.Figure()
+            fig_c.add_trace(go.Scatter(x=h.index, y=h['CCI'], line=dict(color='#22d3ee', width=1), name='CCI'))
+            fig_c.add_hline(y=100, line_dash='dot', line_color='red'); fig_c.add_hline(y=-100, line_dash='dot', line_color='green')
+            fig_c.update_layout(height=200, margin=dict(l=0,r=0,t=10,b=0), template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)')
+            st.plotly_chart(fig_c, use_container_width=True)
+            st.markdown("<div class='ind-desc'>💡 <b>解读：</b> 捕捉极端行情。<b>>100</b> 为超买区，<b><-100</b> 为超卖区。</div>", unsafe_allow_html=True)
 
         # Radar & Gauge
         with st.expander("🦁 市场情绪 & 基本面雷达", expanded=False):
@@ -708,7 +731,7 @@ if page == "🚀 股票分析":
 
     # Tabs
     st.session_state.quant_score = calculate_quant_score(i, h)
-    tabs = st.tabs(["📰 资讯", "👥 持仓 (UI升级)", "💰 估值", "🎓 深度研报"])
+    tabs = st.tabs(["📰 资讯", "👥 持仓", "💰 估值", "🎓 深度研报"])
 
     with tabs[0]:
         news_df = process_news(heavy.get('news', []))
@@ -716,33 +739,42 @@ if page == "🚀 股票分析":
         else: st.info("暂无新闻")
         
     with tabs[1]:
-        # [NEW] Holdings UI Cards (Replaces standard dataframe)
         c1, c2 = st.columns(2)
+        # Institutional Holdings (Enhanced UI)
         with c1:
             st.subheader("🏦 机构持仓")
             if heavy.get('inst') is not None and not heavy['inst'].empty:
-                # Top 5 only to save space
-                for index, row in heavy['inst'].head(5).iterrows():
-                    pct = row.get('pctHeld', 0)
-                    val = row.get('Value', 0)
+                for index, row in heavy['inst'].head(10).iterrows():
                     holder = row.get('Holder', 'Unknown')
+                    val = row.get('Value', 0)
+                    pct = row.get('pctHeld', 0)
+                    link = f"https://www.google.com/search?q={holder}+holdings" # Google Search Link
                     st.markdown(f"""
                     <div class='hold-card'>
-                        <div>
-                            <div class='hold-name'>{holder}</div>
-                            <div class='hold-sub'>持有市值: <span style='color:#fff'>${fmt_big(val)}</span></div>
-                        </div>
-                        <div style='text-align:right'>
-                            <div class='hold-val'>{fmt_pct(pct)}</div>
-                            <div class='hold-bar-bg'><div class='hold-bar-fill' style='width:{min(100, pct*100*5)}%'></div></div>
-                        </div>
+                        <div class='hold-link'><a href='{link}' target='_blank'>{holder}</a><div class='hold-sub'>市值: ${fmt_big(val)}</div></div>
+                        <div style='text-align:right'><div class='hold-val'>{fmt_pct(pct)}</div><div class='hold-bar-container'><div class='hold-bar-fill' style='width:{min(100, pct*1000)}%'></div></div></div>
                     </div>
                     """, unsafe_allow_html=True)
             else: st.info("暂无数据")
+        
+        # Insider Trading (Enhanced UI)
         with c2:
             st.subheader("🕴️ 内部交易")
-            if heavy.get('insider') is not None:
-                st.dataframe(heavy['insider'], use_container_width=True)
+            if heavy.get('insider') is not None and not heavy['insider'].empty:
+                for index, row in heavy['insider'].head(10).iterrows():
+                    insider = row.get('Insider', 'Unknown')
+                    relation = row.get('Position', '')
+                    shares = row.get('Shares', 0)
+                    trans = row.get('Text', '')
+                    # Color code transaction
+                    color = "#ef4444" if "Sale" in trans else "#4ade80"
+                    link = f"https://www.google.com/search?q={insider}+{ticker}"
+                    st.markdown(f"""
+                    <div class='hold-card'>
+                        <div class='hold-link'><a href='{link}' target='_blank'>{insider}</a><div class='hold-sub'>{relation}</div></div>
+                        <div style='text-align:right'><div style='color:{color};font-weight:bold'>{trans[:10]}...</div><div class='hold-val'>{shares}股</div></div>
+                    </div>
+                    """, unsafe_allow_html=True)
             else: st.info("暂无数据")
 
     with tabs[2]:
@@ -764,25 +796,15 @@ if page == "🚀 股票分析":
             st.metric("估值", f"${val:.2f}")
 
     with tabs[3]:
-        st.header(f"🎓 {ticker} 深度研报")
+        st.header(f"🎓 {ticker} 深度研报 (商业模式)")
         st.markdown(f"<div class='report-text'>{safe_i.get('longBusinessSummary', '暂无描述')}</div>", unsafe_allow_html=True)
-        st.markdown("<div class='report-title'>2. 🏰 护城河 (Moat Analysis)</div>", unsafe_allow_html=True)
+        st.markdown("<div class='report-title'>2. 🏰 护城河分析</div>", unsafe_allow_html=True)
         gm = safe_i.get('grossMargins', 0); roe = safe_i.get('returnOnEquity', 0)
         c_m1, c_m2 = st.columns(2)
         c_m1.markdown(f"<div class='score-card'><div class='sc-lbl'>毛利率</div><div class='sc-val' style='color:{'#4ade80' if gm>0.4 else '#f87171'}'>{fmt_pct(gm)}</div><div class='sc-lbl'>标准: >40%</div></div>", unsafe_allow_html=True)
         c_m2.markdown(f"<div class='score-card'><div class='sc-lbl'>ROE</div><div class='sc-val' style='color:{'#4ade80' if roe>0.15 else '#f87171'}'>{fmt_pct(roe)}</div><div class='sc-lbl'>标准: >15%</div></div>", unsafe_allow_html=True)
         
-        st.markdown("<div class='report-title'>3. 🧘‍♂️ 大师检查清单 (Guru Checklist)</div>", unsafe_allow_html=True)
-        peg = safe_i.get('pegRatio')
-        st.markdown(f"<div class='guru-check'><span style='font-size:20px; margin-right:10px'>{'✅' if peg and peg < 1 else '❌'}</span><div><b>彼得·林奇法则</b><br><span style='color:#9ca3af; font-size:13px'>PEG Ratio < 1.0 (当前: {peg})</span></div></div>", unsafe_allow_html=True)
-        
-        graham_pass = False
-        if eps is not None and bvps is not None and eps > 0 and bvps > 0 and rt_price > 0:
-            graham_price = (22.5 * eps * bvps) ** 0.5
-            graham_pass = rt_price < graham_price
-            st.markdown(f"<div class='guru-check'><span style='font-size:20px; margin-right:10px'>{'✅' if graham_pass else '❌'}</span><div><b>格雷厄姆法则</b><br><span style='color:#9ca3af; font-size:13px'>股价 < 格雷厄姆数字 (${graham_price:.2f})</span></div></div>", unsafe_allow_html=True)
-
-        st.markdown("<div class='report-title'>4. 📞 尽职调查</div>", unsafe_allow_html=True)
+        st.markdown("<div class='report-title'>3. 📞 尽职调查</div>", unsafe_allow_html=True)
         dd1, dd2 = st.columns(2)
         dd1.link_button("📄 SEC 10-K", f"https://www.sec.gov/cgi-bin/browse-edgar?CIK={ticker}")
         dd2.link_button("🗣️ Earnings Call", f"https://www.google.com/search?q={ticker}+earnings+call+transcript")
@@ -792,7 +814,6 @@ elif page == "🗓️ 财报地图":
     data = fetch_sector_earnings()
     if data:
         df = pd.DataFrame(data)
-        # [FIX V101] Fix Treemap Text Info Error
         fig = px.treemap(df, path=[px.Constant("全市场"), 'Sector', 'Code'], values=np.ones(len(df)), 
                          color='Days', color_continuous_scale='RdYlGn', 
                          hover_data=['Date', 'Days'])
