@@ -8,7 +8,7 @@ import plotly.graph_objects as go
 import plotly.express as px
 from plotly.subplots import make_subplots
 
-# ================= 1. 铁律配置 (V88: 全功能复原 + 反封锁) =================
+# ================= 1. 铁律配置 =================
 for key in ['HTTP_PROXY', 'HTTPS_PROXY', 'http_proxy', 'https_proxy']:
     if key in os.environ:
         del os.environ[key]
@@ -16,8 +16,12 @@ for key in ['HTTP_PROXY', 'HTTPS_PROXY', 'http_proxy', 'https_proxy']:
 # 注入自定义图标
 ICON_URL = "https://cdn-icons-png.flaticon.com/512/10452/10452449.png"
 
-st.set_page_config(page_title="摩根·V1 (Full)", layout="wide", page_icon="🦁")
+st.set_page_config(page_title="摩根·V1 (Final)", layout="wide", page_icon="🦁")
 
+# [FIX V89] 强制全局导入，防止 NameError
+import yfinance as yf
+
+# ================= 2. 样式死锁 (UI) =================
 st.markdown(f"""
 <head>
     <link rel="apple-touch-icon" href="{ICON_URL}">
@@ -147,7 +151,10 @@ if 'current_ticker' not in st.session_state: st.session_state.current_ticker = '
 
 @st.cache_data(ttl=300)
 def fetch_stock_full_data(ticker):
-    # 指数退避重试机制 (对抗 Too Many Requests)
+    # [FIX V89] 局部导入，双重保险
+    import yfinance as yf
+    
+    # 指数退避重试机制
     max_retries = 3
     for attempt in range(max_retries):
         try:
@@ -158,7 +165,7 @@ def fetch_stock_full_data(ticker):
             h = s.history(period="2y") 
             if h.empty: raise Exception("Empty Data")
             
-            # --- 核心指标计算 (功能全开) ---
+            # --- 指标计算 ---
             # 1. SuperTrend
             h['TR'] = np.maximum(h['High'] - h['Low'], np.abs(h['High'] - h['Close'].shift(1)))
             h['ATR'] = h['TR'].rolling(10).mean()
@@ -224,10 +231,10 @@ def fetch_stock_full_data(ticker):
             period52_low = h['Low'].rolling(window=52).min()
             h['Senkou_Span_B'] = ((period52_high + period52_low) / 2).shift(26)
 
-            # 10. CCI (Manual Calculation Fix)
+            # 10. CCI (Pandas 2.0 兼容版)
             tp = (h['High'] + h['Low'] + h['Close']) / 3
             sma_tp = tp.rolling(20).mean()
-            # [FIX] Manually calc MAD (Pandas 2.0 compatible)
+            # [FIX] Manually calc MAD (Mean Absolute Deviation)
             def calc_mad(x): return np.mean(np.abs(x - np.mean(x)))
             mad = tp.rolling(20).apply(calc_mad, raw=True)
             h['CCI'] = (tp - sma_tp) / (0.015 * mad)
@@ -312,7 +319,7 @@ def fetch_stock_full_data(ticker):
                     opt_data = {"date": near_date, "calls": opt.calls, "puts": opt.puts}
             except: pass
 
-            # [SAFE V88] 钛合金防爆门：强制保证 info 是字典
+            # [Safety] 强制保证 info 是字典
             safe_info = s.info if s.info is not None else {}
             
             return {
@@ -324,7 +331,6 @@ def fetch_stock_full_data(ticker):
             }
             
         except Exception as e:
-            # 最后一次尝试失败才报错
             if attempt == max_retries - 1:
                 dates = pd.date_range(end=datetime.datetime.today(), periods=50)
                 df = pd.DataFrame({'Open':100,'Close':100,'High':100,'Low':100,'Volume':0}, index=dates)
@@ -333,11 +339,11 @@ def fetch_stock_full_data(ticker):
                     "compare":pd.DataFrame(), "options":None, 
                     "upgrades":None, "fin":None, "inst":None, "insider":None
                 }
-            # 否则休息一下再试 (防封锁)
             time.sleep(2**attempt + 1)
 
 @st.cache_data(ttl=3600)
 def fetch_macro_data():
+    import yfinance as yf
     try:
         tickers = ["^VIX", "^TNX", "DX-Y.NYB"] 
         data = yf.download(tickers, period="5d", progress=False)['Close'].iloc[-1]
@@ -346,6 +352,7 @@ def fetch_macro_data():
 
 @st.cache_data(ttl=3600)
 def fetch_correlation_data(ticker):
+    import yfinance as yf
     try:
         benchmarks = ['SPY', 'QQQ', 'GLD', 'BTC-USD']
         data = yf.download([ticker] + benchmarks, period="1y", progress=False)['Close']
@@ -373,6 +380,7 @@ def fetch_related_tickers(ticker, info):
 
 @st.cache_data(ttl=60)
 def fetch_watchlist_snapshot(tickers):
+    import yfinance as yf
     data = []
     for t in tickers:
         try:
@@ -841,15 +849,15 @@ page = st.sidebar.radio("📌 导航", ["🚀 股票分析", "📖 功能说明�
 
 if page == "🚀 股票分析":
     with st.sidebar:
-        with st.expander("📺 视频分析", expanded=True):
+        with st.expander("📺 视频分析 (YouTube)", expanded=True):
             yt_url = st.text_input("视频链接", placeholder="粘贴URL...")
-            if st.button("🚀 提取"):
+            if st.button("🚀 提取 Prompt"):
                 try:
                     from youtube_transcript_api import YouTubeTranscriptApi
                     vid = yt_url.split("v=")[-1].split("&")[0]
                     t = YouTubeTranscriptApi.get_transcript(vid, languages=['zh-Hans','en'])
                     txt = " ".join([x['text'] for x in t])
-                    st.text_area("复制:", f"分析: {txt[:6000]}...", height=150)
+                    st.text_area("复制:", f"我是基金经理。分析此视频：\n1.核心观点\n2.提及股票\n3.多空判断\n\n内容：{txt[:6000]}...", height=150)
                 except Exception as e: st.error(f"提取失败: {e}")
 
         st.markdown("---")
@@ -858,7 +866,7 @@ if page == "🚀 股票分析":
             c = "#4ade80" if s>=60 else "#f87171"
             st.markdown(f"<div class='score-card'><div class='sc-lbl'>MORGAN SCORE</div><div class='sc-val' style='color:{c}'>{s}</div><div class='sc-lbl' style='color:#9CA3AF'>{n}</div></div>", unsafe_allow_html=True)
         
-        # 实时数据面板 (Sidebar)
+        # 实时数据
         ticker = st.session_state.current_ticker
         with st.spinner(f"🦁 正在连接华尔街数据源: {ticker} ..."):
             data = fetch_stock_full_data(ticker)
@@ -883,15 +891,29 @@ if page == "🚀 股票分析":
                 stop_loss = curr_p - (2 * atr)
                 dd_curr = h['Drawdown'].iloc[-1]
                 dd_max = h['Drawdown'].min()
-                st.markdown(f"<div class='risk-box'><b>🛡️ 风控助手</b><br>波动率: {atr:.2f}<br>止损: <span style='color:#f87171'>${stop_loss:.2f}</span><br>回撤: {dd_curr:.1%} (Max: {dd_max:.1%})</div>", unsafe_allow_html=True)
+                st.markdown(f"""
+                <div class='risk-box'>
+                    <b>🛡️ 风控助手 (ATR动态止损)</b><br>
+                    当前波动率: {atr:.2f}<br>
+                    建议止损位: <span style='color:#f87171;font-weight:bold'>${stop_loss:.2f}</span><br>
+                    <hr style='margin:5px 0; border-color:#7f1d1d'>
+                    当前回撤: {dd_curr:.1%}<br>
+                    52周最大回撤: <b>{dd_max:.1%}</b>
+                </div>
+                """, unsafe_allow_html=True)
                 
-                with st.expander("🧮 凯利计算器"):
-                    win_prob = st.slider("胜率", 0, 100, 50)
-                    risk_reward = st.slider("盈亏比", 1.0, 5.0, 2.0)
-                    P = win_prob / 100; R = risk_reward
+                # [NEW] 凯利公式计算器
+                with st.expander("🧮 凯利仓位计算器"):
+                    win_prob = st.slider("胜率 (%)", 0, 100, 50)
+                    risk_reward = st.slider("盈亏比 (1:x)", 1.0, 5.0, 2.0)
+                    # Kelly = P - (1-P)/R
+                    P = win_prob / 100
+                    R = risk_reward
                     kelly = P - (1-P)/R
-                    if kelly > 0: st.markdown(f"仓位: <b style='color:#4ade80'>{kelly:.1%}</b>", unsafe_allow_html=True)
-                    else: st.markdown(f"仓位: <b style='color:#f87171'>0%</b>", unsafe_allow_html=True)
+                    if kelly > 0:
+                        st.markdown(f"建议仓位: <b style='color:#4ade80'>{kelly:.1%}</b>", unsafe_allow_html=True)
+                    else:
+                        st.markdown(f"建议仓位: <b style='color:#f87171'>不参与 (0%)</b>", unsafe_allow_html=True)
 
             rel_tickers = fetch_related_tickers(ticker, i)
             if rel_tickers:
@@ -905,7 +927,8 @@ if page == "🚀 股票分析":
                         if st.button(r['sym'], key=f"btn_{r['sym']}"):
                             st.session_state.current_ticker = r['sym']
                             st.rerun()
-                    with c_txt: st.markdown(f"<div style='margin-top:5px; font-size:13px; color:{rc}'>{r['chg']:.2%}</div>", unsafe_allow_html=True)
+                    with c_txt:
+                        st.markdown(f"<div style='margin-top:5px; font-size:13px; color:{rc}'>{r['chg']:.2%}</div>", unsafe_allow_html=True)
 
         st.caption("我的自选")
         c1, c2 = st.columns([3,1])
@@ -922,7 +945,6 @@ if page == "🚀 股票分析":
             if cols[0].button("分析", key=f"a_{sym}"): st.session_state.current_ticker = sym; st.rerun()
             if cols[1].button("删", key=f"d_{sym}"): st.session_state.watchlist.remove(sym); st.rerun()
 
-    # 启动主程序 (在所有函数定义之后)
     render_main_app()
 
 else:
