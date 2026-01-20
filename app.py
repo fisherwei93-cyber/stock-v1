@@ -17,9 +17,9 @@ for key in ['HTTP_PROXY', 'HTTPS_PROXY', 'http_proxy', 'https_proxy']:
 
 ICON_URL = "https://cdn-icons-png.flaticon.com/512/10452/10452449.png"
 
-st.set_page_config(page_title="摩根·V1 (Final)", layout="wide", page_icon="🦁")
+st.set_page_config(page_title="摩根·V1 (Ultimate)", layout="wide", page_icon="🦁")
 
-# ================= 2. 样式死锁 (UI) =================
+# ================= 2. 样式死锁 (UI Revolution) =================
 st.markdown(f"""
 <head>
     <link rel="apple-touch-icon" href="{ICON_URL}">
@@ -40,13 +40,17 @@ st.markdown(f"""
     }}
     div[data-testid="stMetricLabel"] {{ color: #9CA3AF !important; font-weight: 700 !important; }}
     
-    /* 侧边栏样式 */
+    /* 侧边栏财报卡片 */
     .earning-card {{
-        background: #1e1b4b; border-left: 4px solid #6366f1;
-        padding: 8px; margin-bottom: 6px; border-radius: 4px;
+        background: #1e1b4b; 
+        border-left: 4px solid #6366f1;
+        padding: 8px;
+        margin-bottom: 6px;
+        border-radius: 4px;
     }}
     .earning-alert {{
-        background: #450a0a; border-left: 4px solid #ef4444;
+        background: #450a0a;
+        border-left: 4px solid #ef4444;
         animation: pulse 2s infinite;
     }}
     @keyframes pulse {{
@@ -84,33 +88,31 @@ st.markdown(f"""
     .l-sub {{ font-size: 14px; font-weight: 800; margin-top: 8px; margin-bottom: 4px; color: #333; text-transform: uppercase; }}
     .l-item {{ display: flex; justify-content: space-between; align-items: center; font-size: 14px; font-weight: 600; border-bottom: 1px dashed rgba(0,0,0,0.2); padding: 3px 0; color: #000; }}
     
-    /* 商业版图 (Mind Map Cards) */
-    .mm-container {{ display: flex; gap: 10px; overflow-x: auto; padding-bottom: 10px; }}
-    .mm-card {{
-        min-width: 100px; background: #262626; border: 1px solid #444; border-radius: 8px;
-        padding: 10px; text-align: center; cursor: pointer; transition: 0.2s;
-    }}
-    .mm-card:hover {{ border-color: #FF9F1C; background: #333; }}
-    .mm-role {{ font-size: 10px; color: #9CA3AF; text-transform: uppercase; margin-bottom: 4px; }}
-    .mm-ticker {{ font-size: 16px; font-weight: bold; color: #fff; }}
-    
     /* 历史搜索 */
     .hist-tag {{
-        display: inline-block; background: #333; color: #ccc; padding: 2px 8px; 
-        border-radius: 12px; font-size: 11px; margin: 2px; cursor: pointer; border: 1px solid #444;
+        display: inline-block; background: #333; color: #ccc; padding: 4px 10px; 
+        border-radius: 15px; font-size: 11px; margin: 3px; cursor: pointer; border: 1px solid #444;
+        transition: 0.2s;
     }}
-    .hist-tag:hover {{ border-color: #fff; color: #fff; }}
+    .hist-tag:hover {{ border-color: #FF9F1C; color: #FF9F1C; background: #222; }}
 
-    /* 标签与按钮 */
+    /* 持仓卡片 (New UI) */
+    .hold-card {{
+        background: #1A1A1A; border: 1px solid #333; border-radius: 8px; padding: 12px; margin-bottom: 8px;
+        display: flex; justify-content: space-between; align-items: center;
+    }}
+    .hold-name {{ font-weight: bold; font-size: 14px; color: #e5e7eb; }}
+    .hold-sub {{ font-size: 11px; color: #9ca3af; }}
+    .hold-val {{ font-family: monospace; font-weight: bold; color: #4ade80; }}
+    .hold-bar-bg {{ width: 100%; height: 4px; background: #333; border-radius: 2px; margin-top: 6px; }}
+    .hold-bar-fill {{ height: 100%; background: #3b82f6; border-radius: 2px; }}
+
+    /* 通用 */
     .tg-s {{ background: rgba(0,0,0,0.1); padding: 1px 5px; border-radius: 4px; font-size: 11px; margin-left: 6px; color: #333; }}
     .earning-row {{ display: flex; justify-content: space-between; padding: 8px; border-bottom: 1px solid #333; font-size: 13px; }}
-    
-    /* 多空博弈 */
     .thesis-col {{ flex: 1; padding: 10px; border-radius: 6px; font-size: 13px; margin-top:5px; }}
     .thesis-bull {{ background: rgba(6, 78, 59, 0.8); border: 1px solid #34d399; color: #fff; }}
     .thesis-bear {{ background: rgba(127, 29, 29, 0.8); border: 1px solid #f87171; color: #fff; }}
-    
-    /* 组件样式 */
     .score-card {{ background: #1A1A1A; padding: 15px; border-radius: 12px; text-align: center; border: 1px solid #333; margin-bottom: 15px; }}
     .sc-val {{ font-size: 42px; font-weight: 900; color: #4ade80; line-height: 1; }}
     .sc-lbl {{ font-size: 12px; color: #D1D5DB; font-weight: bold; }}
@@ -118,14 +120,10 @@ st.markdown(f"""
     .social-box {{ display: flex; gap: 10px; margin-top: 10px; }}
     .mc-box {{ background: #0f172a; border: 1px solid #1e293b; padding: 10px; border-radius: 6px; margin-top:5px; }}
     .note-box {{ background: #1e1b4b; border-left: 4px solid #6366f1; padding: 10px; font-size: 12px; color: #e0e7ff; margin-top: 5px; border-radius: 4px; line-height: 1.6; }}
-    
     .streamlit-expanderHeader {{ background-color: #222 !important; color: #fff !important; border: 1px solid #444; }}
-    
-    /* 研报样式 */
     .report-title {{ font-size: 22px; font-weight: 900; color: #FF9F1C; margin-bottom: 10px; border-left: 5px solid #FF9F1C; padding-left: 10px; }}
     .report-text {{ font-size: 15px; line-height: 1.8; color: #E5E7EB; margin-bottom: 20px; background: #1A1A1A; padding: 15px; border-radius: 8px; }}
     .guru-check {{ display: flex; align-items: center; margin-bottom: 8px; padding: 8px; background: #262626; border-radius: 6px; }}
-    
     .wiki-card {{ background: #1A1A1A; border: 1px solid #333; border-radius: 8px; padding: 20px; margin-bottom: 20px; }}
     .wiki-title {{ font-size: 20px; font-weight: bold; color: #FF9F1C; margin-bottom: 15px; border-bottom: 1px solid #444; padding-bottom: 5px; }}
     .wiki-text {{ font-size: 14px; color: #E5E7EB; line-height: 1.8; margin-bottom: 10px; }}
@@ -159,7 +157,6 @@ def fetch_realtime_price(ticker):
             info = s.info if s.info else {}
             price = info.get('currentPrice', info.get('regularMarketPrice', 0))
             prev = info.get('previousClose', price)
-        
         ext_price, ext_label = None, ""
         try:
             info = s.info if s.info else {}
@@ -175,21 +172,17 @@ def fetch_heavy_data(ticker):
     import yfinance as yf
     max_retries = 3; h = pd.DataFrame()
     s = yf.Ticker(ticker)
-    
     for attempt in range(max_retries):
         try:
             h = s.history(period="2y")
             if not h.empty: break
             time.sleep(1)
         except: time.sleep(2**attempt)
-            
     if h.empty: return {"history": pd.DataFrame(), "info": {}, "error": "No Data"}
 
-    # --- 指标计算 ---
-    h['MA20'] = h['Close'].rolling(20).mean()
-    h['MA60'] = h['Close'].rolling(60).mean()
-    h['MA120'] = h['Close'].rolling(120).mean()
-    h['MA200'] = h['Close'].rolling(200).mean()
+    # Core Indicators
+    h['MA20'] = h['Close'].rolling(20).mean(); h['MA60'] = h['Close'].rolling(60).mean()
+    h['MA120'] = h['Close'].rolling(120).mean(); h['MA200'] = h['Close'].rolling(200).mean()
     h['TR'] = np.maximum(h['High'] - h['Low'], np.abs(h['High'] - h['Close'].shift(1)))
     h['ATR'] = h['TR'].rolling(10).mean()
     h['ST_Lower'] = ((h['High']+h['Low'])/2) - (3 * h['ATR'])
@@ -206,6 +199,7 @@ def fetch_heavy_data(ticker):
     wma_half = wma(h['Close'], period // 2); wma_full = wma(h['Close'], period)
     h['HMA'] = wma(2 * wma_half - wma_full, int(np.sqrt(period)))
     
+    # Advanced
     plus_dm = h['High'].diff(); minus_dm = h['Low'].diff()
     plus_dm[plus_dm < 0] = 0; minus_dm[minus_dm > 0] = 0; minus_dm = minus_dm.abs()
     tr14 = h['TR'].rolling(14).sum()
@@ -226,14 +220,7 @@ def fetch_heavy_data(ticker):
     
     hh = h['High'].rolling(14).max(); ll = h['Low'].rolling(14).min()
     h['WR'] = -100 * (hh - h['Close']) / (hh - ll)
-    mfm = ((h['Close'] - h['Low']) - (h['High'] - h['Close'])) / (h['High'] - h['Low'])
-    mfv = mfm * h['Volume']
-    h['CMF'] = mfv.rolling(20).sum() / h['Volume'].rolling(20).sum()
-    exp12 = h['Close'].ewm(span=12).mean(); exp26 = h['Close'].ewm(span=26).mean()
-    h['MACD'] = exp12 - exp26; h['Signal'] = h['MACD'].ewm(span=9).mean()
-    delta = h['Close'].diff()
-    gain = (delta.where(delta > 0, 0)).rolling(14).mean(); loss = (-delta.where(delta < 0, 0)).rolling(14).mean()
-    rs = gain / loss; h['RSI'] = 100 - (100 / (1 + rs))
+    
     h['UPPER'] = h['MA20'] + 2*h['STD20']; h['LOWER'] = h['MA20'] - 2*h['STD20']
     h['DC_Upper'] = h['High'].rolling(20).max(); h['DC_Lower'] = h['Low'].rolling(20).min()
 
@@ -292,72 +279,74 @@ def fetch_correlation_data(ticker):
     except: return None
 
 @st.cache_data(ttl=3600)
-def fetch_supply_chain(ticker):
-    # [NEW] 商业版图 (Mind Map Data)
-    # 为明星股定制的产业链数据，普通股使用通用关联
-    custom_maps = {
-        "TSLA": [
-            {"r": "👑 核心", "t": "TSLA"},
-            {"r": "🚀 兄弟公司", "t": "SpaceX(未上市)"},
-            {"r": "🔋 电池", "t": "PCRFY"},
-            {"r": "⛏️ 锂矿", "t": "ALB"},
-            {"r": "⚔️ 竞对", "t": "BYDDF"},
-            {"r": "⚔️ 竞对", "t": "RIVN"}
-        ],
-        "NVDA": [
-            {"r": "👑 核心", "t": "NVDA"},
-            {"r": "🏭 代工", "t": "TSM"},
-            {"r": "💾 存储", "t": "MU"},
-            {"r": "🧠 架构", "t": "ARM"},
-            {"r": "⚔️ 竞对", "t": "AMD"},
-            {"r": "⚔️ 竞对", "t": "INTC"}
-        ],
-        "AAPL": [
-            {"r": "👑 核心", "t": "AAPL"},
-            {"r": "🏭 组装", "t": "HNHPF"},
-            {"r": "📱 芯片", "t": "QCOM"},
-            {"r": "☁️ 云服", "t": "GOOG"},
-            {"r": "⚔️ 竞对", "t": "MSFT"},
-            {"r": "⚔️ 竞对", "t": "SSNLF"}
-        ]
+def fetch_mind_map_data(ticker):
+    # [NEW] 增强版思维导图数据结构 (Sunburst Compatible)
+    # ids, labels, parents, values
+    
+    # 默认模版
+    base = {
+        "id": [ticker, "Competitors", "Supply", "Tech", "Macro"],
+        "label": [ticker, "⚔️ 竞争对手", "⛓️ 供应链", "🧠 核心技术", "🌍 宏观影响"],
+        "parent": ["", ticker, ticker, ticker, ticker],
+        "color": ["#FF9F1C", "#ef4444", "#3b82f6", "#a855f7", "#10b981"]
     }
     
-    # 通用关联 (Fallback)
-    default_rels = {
-        "AMD": ["NVDA", "INTC", "TSM", "AVGO"],
-        "MSFT": ["AAPL", "GOOG", "AMZN", "ORCL"],
-        "GOOG": ["MSFT", "META", "AMZN", "AI"],
-        "AMZN": ["BABA", "WMT", "EBAY", "SHOP"],
-        "META": ["GOOG", "SNAP", "PINS", "TTD"],
-        "PLTR": ["AI", "SNOW", "DDOG", "CRWD", "MSFT"]
+    # 针对热门股的定制数据
+    custom = {
+        "TSLA": {
+            "Competitors": ["BYDDF", "RIVN", "LCID", "XPEV"],
+            "Supply": ["Panasonic (电池)", "CATL (电池)", "Idra (压铸)"],
+            "Tech": ["FSD (AI)", "Dojo", "4680", "Optimus"],
+            "Macro": ["利率敏感", "EV补贴", "锂价"]
+        },
+        "NVDA": {
+            "Competitors": ["AMD", "INTC", "QCOM", "GOOG (TPU)"],
+            "Supply": ["TSM (代工)", "SK Hynix (HBM)", "Micron"],
+            "Tech": ["CUDA", "Hopper", "Blackwell", "Omniverse"],
+            "Macro": ["AI支出", "加密货币", "贸易禁令"]
+        },
+        "AAPL": {
+            "Competitors": ["MSFT", "GOOG", "SSNLF", "HWEI"],
+            "Supply": ["Foxconn", "TSM", "Samsung Display"],
+            "Tech": ["iOS", "Apple Silicon", "Vision Pro", "Services"],
+            "Macro": ["消费支出", "汇率", "中国市场"]
+        }
     }
     
-    if ticker in custom_maps:
-        return custom_maps[ticker]
+    data = custom.get(ticker, {
+        "Competitors": ["行业竞对1", "行业竞对2"],
+        "Supply": ["主要供应商", "原材料"],
+        "Tech": ["核心产品", "研发"],
+        "Macro": ["利率", "GDP"]
+    })
     
-    # 构造通用数据
-    rels = default_rels.get(ticker, [])
-    res = [{"r": "👑 核心", "t": ticker}]
-    for r in rels:
-        res.append({"r": "🔗 关联", "t": r})
-    return res
+    # 构建 Plotly Sunburst 数据
+    ids = base["id"][:]
+    labels = base["label"][:]
+    parents = base["parent"][:]
+    
+    for cat, items in data.items():
+        for item in items:
+            ids.append(f"{cat}-{item}")
+            labels.append(item)
+            parents.append(cat)
+            
+    return ids, labels, parents
 
 # ================= 4. 逻辑核心 =================
 
 def calculate_vision_analysis(df, info):
     if len(df) < 250: return None
     curr = df['Close'].iloc[-1]
-    
     ma20 = df['MA20'].iloc[-1]; ma60 = df['MA60'].iloc[-1]; ma200 = df['MA200'].iloc[-1]
     low_52w = df['Low'].tail(250).min(); high_52w = df['High'].tail(250).max()
-    
     pts = []
-    if curr < ma20: pts.append({"t":"res", "l":"小", "v":ma20, "d":"MA20/反压"})
-    if curr < ma60: pts.append({"t":"res", "l":"中", "v":ma60, "d":"MA60/趋势"})
-    if curr < high_52w: pts.append({"t":"res", "l":"强", "v":high_52w, "d":"前高"})
-    if curr > ma20: pts.append({"t":"sup", "l":"小", "v":ma20, "d":"MA20/月线"})
-    if curr > ma60: pts.append({"t":"sup", "l":"中", "v":ma60, "d":"MA60/趋势"})
-    if curr > ma200: pts.append({"t":"sup", "l":"强", "v":ma200, "d":"MA200/牛熊"})
+    if curr < ma20: pts.append({"t":"res", "l":"小", "v":ma20, "d":"MA20/短线反压"})
+    if curr < ma60: pts.append({"t":"res", "l":"中", "v":ma60, "d":"MA60/生命线"})
+    if curr < high_52w: pts.append({"t":"res", "l":"强", "v":high_52w, "d":"前高阻力"})
+    if curr > ma20: pts.append({"t":"sup", "l":"小", "v":ma20, "d":"MA20/短线支撑"})
+    if curr > ma60: pts.append({"t":"sup", "l":"中", "v":ma60, "d":"MA60/趋势支撑"})
+    if curr > ma200: pts.append({"t":"sup", "l":"强", "v":ma200, "d":"MA200/牛熊分界"})
     
     def filter_pts(p_list, reverse=False):
         p_list = sorted(p_list, key=lambda x:x['v'], reverse=reverse)
@@ -368,17 +357,14 @@ def calculate_vision_analysis(df, info):
     
     if not isinstance(info, dict): info = {}
     eps_fwd = info.get('forwardEps'); val_data = f"{eps_fwd*25:.0f}-{eps_fwd*35:.0f}" if eps_fwd else "N/A"
-    
     rsi = df['RSI'].iloc[-1]; macd_val = df['MACD'].iloc[-1]
     tech_str = f"RSI({rsi:.0f}) | {'MACD金叉' if macd_val>0 else 'MACD死叉'}"
-    
     return {"growth": info.get('revenueGrowth', 0), "val_range": val_data, "sups": sups, "ress": ress, "tech": tech_str}
 
 def generate_bull_bear_thesis(df, info):
     if df.empty: return [], []
     bulls = []; bears = []
     curr = df['Close'].iloc[-1]; ma200 = df['MA200'].iloc[-1]; rsi = df['RSI'].iloc[-1]
-    
     if curr > ma200: bulls.append("股价站上年线 (长期趋势向上)")
     else: bears.append("股价跌破年线 (长期趋势向下)")
     if rsi < 30: bulls.append("RSI超卖 (存在反弹需求)")
@@ -387,7 +373,6 @@ def generate_bull_bear_thesis(df, info):
     if short and short > 0.2: bulls.append("高做空比 (逼空潜力)")
     rev_g = info.get('revenueGrowth', 0)
     if rev_g > 0.2: bulls.append("高成长 (营收增速 > 20%)")
-    
     while len(bulls) < 3: bulls.append("暂无更多明显信号")
     while len(bears) < 3: bears.append("暂无更多明显信号")
     return bulls[:3], bears[:3]
@@ -455,7 +440,6 @@ RATING_MAP = {"Buy":"买入", "Hold":"持有", "Sell":"卖出", "Strong Buy":"�
 # ================= 5. 主程序 =================
 if 'watchlist' not in st.session_state: st.session_state.watchlist = ['TSLA', 'NVDA', 'AAPL', 'AMD', 'PLTR']
 if 'current_ticker' not in st.session_state: st.session_state.current_ticker = 'TSLA'
-# [NEW] 搜索历史
 if 'search_history' not in st.session_state: st.session_state.search_history = []
 
 # Sidebar
@@ -474,24 +458,27 @@ with st.sidebar:
     if c_s2.button("🔍"): 
         if new_ticker: 
             st.session_state.current_ticker = new_ticker
-            # Add to history
             if new_ticker not in st.session_state.search_history:
                 st.session_state.search_history.insert(0, new_ticker)
-                st.session_state.search_history = st.session_state.search_history[:5] # Keep last 5
+                st.session_state.search_history = st.session_state.search_history[:5]
             st.rerun()
             
-    # Display History
     if st.session_state.search_history:
         st.caption("📜 历史搜索")
-        hist_html = "".join([f"<span class='hist-tag'>{t}</span>" for t in st.session_state.search_history])
-        st.markdown(f"<div>{hist_html}</div>", unsafe_allow_html=True)
+        # Clickable history
+        cols = st.columns(len(st.session_state.search_history))
+        for idx, h_t in enumerate(st.session_state.search_history):
+            with cols[idx]:
+                if st.button(h_t, key=f"hist_{h_t}"):
+                    st.session_state.current_ticker = h_t
+                    st.rerun()
 
     # 4. Earnings Radar
     st.markdown("---")
     st.caption("📅 财报雷达 (7天内高亮)")
     earnings_list = fetch_sector_earnings()
     if earnings_list:
-        for item in earnings_list[:10]: # Show Top 10
+        for item in earnings_list[:10]: 
             is_urgent = item['Days'] <= 7
             bg_style = "earning-alert" if is_urgent else "earning-card"
             icon = "🚨" if is_urgent else "📅"
@@ -583,20 +570,24 @@ if page == "🚀 股票分析":
             </div>
             """, unsafe_allow_html=True)
 
-        # [NEW] Mind Map / Supply Chain (Expandable)
+        # [NEW] Sunburst Mind Map (Plotly)
         with st.expander("🔗 商业版图 & 竞对 (点击展开)", expanded=False):
-            chain_data = fetch_supply_chain(ticker)
-            if chain_data:
-                st.write("点击卡片切换分析：")
-                # Horizontal scroll container simulation
-                cols = st.columns(len(chain_data))
-                for idx, item in enumerate(chain_data):
-                    with cols[idx]:
-                        st.markdown(f"<div class='mm-role'>{item['r']}</div>", unsafe_allow_html=True)
-                        if st.button(item['t'], key=f"mm_{item['t']}"):
-                            st.session_state.current_ticker = item['t']
-                            st.rerun()
-            else: st.caption("暂无供应链数据")
+            ids, labels, parents = fetch_mind_map_data(ticker)
+            if ids:
+                fig_sun = go.Figure(go.Sunburst(
+                    ids=ids, labels=labels, parents=parents,
+                    branchvalues="total",
+                    marker=dict(colors=["#FF9F1C", "#ef4444", "#3b82f6", "#a855f7", "#10b981"], pattern=dict(solidity=0.5)),
+                    hovertemplate='<b>%{label}</b><br>点击板块展开/收起<extra></extra>'
+                ))
+                fig_sun.update_layout(
+                    margin=dict(t=0, l=0, r=0, b=0),
+                    height=400,
+                    paper_bgcolor='rgba(0,0,0,0)',
+                    font=dict(color="white", size=14)
+                )
+                st.plotly_chart(fig_sun, use_container_width=True)
+                st.caption("👆 点击内圈可放大查看细节")
 
         # Comparison Chart
         with st.expander("🆚 跑赢大盘了吗? (点击展开)", expanded=False):
@@ -650,9 +641,6 @@ if page == "🚀 股票分析":
                 fig_mc.add_trace(go.Scatter(y=[last_price]*days, mode='lines', line=dict(color='red', dash='dash'), name='当前价'))
                 fig_mc.update_layout(height=300, template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)')
                 st.plotly_chart(fig_mc, use_container_width=True)
-                final_prices = sim_df.iloc[-1].values
-                p5 = np.percentile(final_prices, 5); p95 = np.percentile(final_prices, 95)
-                st.markdown(f"<div class='mc-box'><span style='color:#fca5a5'>📉 底线(P5): <b>${p5:.2f}</b></span> <span style='color:#86efac'>🚀 乐观(P95): <b>${p95:.2f}</b></span></div>", unsafe_allow_html=True)
 
         # Advanced Indicators
         with st.expander("📉 进阶指标 (Z-Score/ADX/CCI)", expanded=False):
@@ -708,16 +696,28 @@ if page == "🚀 股票分析":
         else: st.info("暂无新闻")
         
     with tabs[1]:
-        # [NEW] Holdings UI Upgrade
+        # [NEW] Holdings UI Cards (Replaces standard dataframe)
         c1, c2 = st.columns(2)
         with c1:
             st.subheader("🏦 机构持仓")
-            if heavy.get('inst') is not None:
-                idf = heavy['inst'].copy()
-                st.dataframe(idf, column_config={
-                    "pctHeld": st.column_config.ProgressColumn("占比", format="%.2f%%", min_value=0, max_value=0.15),
-                    "Value": st.column_config.NumberColumn("市值", format="$%d")
-                }, use_container_width=True)
+            if heavy.get('inst') is not None and not heavy['inst'].empty:
+                # Top 5 only to save space
+                for index, row in heavy['inst'].head(5).iterrows():
+                    pct = row.get('pctHeld', 0)
+                    val = row.get('Value', 0)
+                    holder = row.get('Holder', 'Unknown')
+                    st.markdown(f"""
+                    <div class='hold-card'>
+                        <div>
+                            <div class='hold-name'>{holder}</div>
+                            <div class='hold-sub'>持有市值: <span style='color:#fff'>${fmt_big(val)}</span></div>
+                        </div>
+                        <div style='text-align:right'>
+                            <div class='hold-val'>{fmt_pct(pct)}</div>
+                            <div class='hold-bar-bg'><div class='hold-bar-fill' style='width:{min(100, pct*100*5)}%'></div></div>
+                        </div>
+                    </div>
+                    """, unsafe_allow_html=True)
             else: st.info("暂无数据")
         with c2:
             st.subheader("🕴️ 内部交易")
@@ -756,6 +756,12 @@ if page == "🚀 股票分析":
         peg = safe_i.get('pegRatio')
         st.markdown(f"<div class='guru-check'><span style='font-size:20px; margin-right:10px'>{'✅' if peg and peg < 1 else '❌'}</span><div><b>彼得·林奇法则</b><br><span style='color:#9ca3af; font-size:13px'>PEG Ratio < 1.0 (当前: {peg})</span></div></div>", unsafe_allow_html=True)
         
+        graham_pass = False
+        if eps is not None and bvps is not None and eps > 0 and bvps > 0 and rt_price > 0:
+            graham_price = (22.5 * eps * bvps) ** 0.5
+            graham_pass = rt_price < graham_price
+            st.markdown(f"<div class='guru-check'><span style='font-size:20px; margin-right:10px'>{'✅' if graham_pass else '❌'}</span><div><b>格雷厄姆法则</b><br><span style='color:#9ca3af; font-size:13px'>股价 < 格雷厄姆数字 (${graham_price:.2f})</span></div></div>", unsafe_allow_html=True)
+
         st.markdown("<div class='report-title'>4. 📞 尽职调查</div>", unsafe_allow_html=True)
         dd1, dd2 = st.columns(2)
         dd1.link_button("📄 SEC 10-K", f"https://www.sec.gov/cgi-bin/browse-edgar?CIK={ticker}")
@@ -763,17 +769,14 @@ if page == "🚀 股票分析":
 
 elif page == "🗓️ 财报地图":
     st.title("🗓️ 全行业财报热力图")
-    st.caption("颜色越红 = 距离发布日越近")
     data = fetch_sector_earnings()
     if data:
         df = pd.DataFrame(data)
+        # [FIX V101] Fix Treemap Text Info Error
         fig = px.treemap(df, path=[px.Constant("全市场"), 'Sector', 'Code'], values=np.ones(len(df)), 
                          color='Days', color_continuous_scale='RdYlGn', 
-                         hover_data=['Date', 'Days'],
-                         # [NEW] Add text to treemap
-                         textinfo='label+text')
-        # Customizing text display
-        fig.data[0].texttemplate = "%{label}<br>%{customdata[0]}"
+                         hover_data=['Date', 'Days'])
+        fig.update_traces(textinfo="label+text", texttemplate="%{label}<br>T-%{customdata[1]}") # Use standard update_traces
         fig.update_layout(height=600, template="plotly_dark", margin=dict(t=30, l=0, r=0, b=0))
         st.plotly_chart(fig, use_container_width=True)
         with st.expander("查看详细时间表"): st.dataframe(df[['Code', 'Sector', 'Date', 'Days']].set_index('Code'), use_container_width=True)
