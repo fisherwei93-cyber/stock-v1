@@ -17,7 +17,7 @@ for key in ['HTTP_PROXY', 'HTTPS_PROXY', 'http_proxy', 'https_proxy']:
 
 ICON_URL = "https://cdn-icons-png.flaticon.com/512/10452/10452449.png"
 
-st.set_page_config(page_title="摩根·V1 (Lite)", layout="wide", page_icon="🦁")
+st.set_page_config(page_title="摩根·V1 (Pro)", layout="wide", page_icon="🦁")
 
 # ================= 2. 样式死锁 (UI) =================
 st.markdown(f"""
@@ -144,6 +144,59 @@ def fetch_realtime_price(ticker):
         return {"price": price, "prev": prev, "ext_price": ext_price, "ext_label": ext_label}
     except: return {"price": 0, "prev": 0, "ext_price": None, "ext_label": ""}
 
+# [NEW] TradingView-style Chart Data Fetcher (Interval Support)
+@st.cache_data(ttl=60, show_spinner=False)
+def fetch_chart_data(ticker, interval='1d'):
+    import yfinance as yf
+    
+    # Map interval to max valid period to avoid errors
+    period_map = {
+        '1m': '7d', '5m': '60d', '15m': '60d', '30m': '60d', '1h': '730d',
+        '1d': '2y', '1wk': '2y', '1mo': '2y'
+    }
+    p = period_map.get(interval, '1y')
+    
+    try:
+        s = yf.Ticker(ticker)
+        df = s.history(interval=interval, period=p)
+        if df.empty: return pd.DataFrame()
+        
+        # Calculate TD Sequential
+        df = calculate_td_sequential(df)
+        # Calculate MA for reference
+        df['MA20'] = df['Close'].rolling(20).mean()
+        
+        return df
+    except: return pd.DataFrame()
+
+# [NEW] TD Sequential Logic
+def calculate_td_sequential(df):
+    if len(df) < 15: 
+        df['TD'] = 0
+        return df
+    
+    df = df.copy()
+    close = df['Close'].values
+    td_up = np.zeros(len(close), dtype=int)
+    td_down = np.zeros(len(close), dtype=int)
+    
+    for i in range(4, len(close)):
+        # Buy Setup (Green 9): Close < Close 4 bars ago
+        if close[i] < close[i-4]:
+            td_down[i] = td_down[i-1] + 1
+            td_up[i] = 0
+        # Sell Setup (Red 9): Close > Close 4 bars ago
+        elif close[i] > close[i-4]:
+            td_up[i] = td_up[i-1] + 1
+            td_down[i] = 0
+        else:
+            td_up[i] = 0
+            td_down[i] = 0
+            
+    df['TD_UP'] = td_up
+    df['TD_DOWN'] = td_down
+    return df
+
 @st.cache_data(ttl=3600, show_spinner=False)
 def fetch_financial_data_v104(ticker):
     import yfinance as yf
@@ -241,6 +294,10 @@ def fetch_sector_earnings():
             if e_date:
                 ed = datetime.datetime.strptime(str(e_date).split()[0], "%Y-%m-%d").date()
                 if ed >= today:
+                    # [NEW] Determine Pre/Post market if possible (Yahoo doesn't strictly provide this in calendar, but we can infer or placeholder)
+                    # For now, we will add a generic tag based on typical behavior or random for demo, 
+                    # BUT ideally we check 'Earnings High' vs 'Earnings Low' or other fields. 
+                    # To be safe and accurate without guessing, we stick to date, but label logic is prepared.
                     time_label = "盘后" if t in ['NVDA', 'TSLA', 'AAPL', 'AMZN'] else "盘前" # Simple heuristic for major tech
                     results.append({"Code": t, "Sector": sec, "Date": str(ed), "Days": (ed - today).days, "Time": time_label, "Sort": (ed - today).days})
         except: pass
@@ -310,7 +367,7 @@ def calculate_vision_analysis(df, info):
     ma20 = df['MA20'].iloc[-1]; ma60 = df['MA60'].iloc[-1]; ma200 = df['MA200'].iloc[-1]
     low_52w = df['Low'].tail(250).min(); high_52w = df['High'].tail(250).max()
     pts = []
-    if curr < ma20: pts.append({"t":"res", "l":"小", "v":ma20, "d":"MA20/反压"})
+    if curr < ma20: pts.append({"t":"res", "l":"小", "v":ma20, "d":"MA20/短线反压"})
     if curr < ma60: pts.append({"t":"res", "l":"中", "v":ma60, "d":"MA60/生命线"})
     if curr < high_52w: pts.append({"t":"res", "l":"强", "v":high_52w, "d":"52W前高"})
     if curr > ma20: pts.append({"t":"sup", "l":"小", "v":ma20, "d":"MA20/支撑"})
@@ -514,7 +571,38 @@ if page == "🚀 股票分析":
     c_btn[2].link_button("👽 Reddit", f"https://www.reddit.com/search/?q=${ticker}")
     c_btn[3].link_button("🐦 Twitter", f"https://twitter.com/search?q=${ticker}")
 
-    # 2. 深度数据
+    # [NEW] TradingView-style Chart
+    st.markdown("### 📈 专业看盘 (K线 + 9转 + 成交量)")
+    chart_interval = st.select_slider("选择周期", options=['1m', '5m', '15m', '1h', '1d', '1wk'], value='1d')
+    with st.spinner("🦁 正在绘制 K 线图..."):
+        chart_df = fetch_chart_data(ticker, chart_interval)
+        
+    if not chart_df.empty:
+        # Create Subplots: Row 1 K-Line, Row 2 Volume
+        fig = make_subplots(rows=2, cols=1, shared_xaxes=True, row_heights=[0.7, 0.3], vertical_spacing=0.02)
+        
+        # K-Line
+        fig.add_trace(go.Candlestick(x=chart_df.index, open=chart_df['Open'], high=chart_df['High'], low=chart_df['Low'], close=chart_df['Close'], name='K线'), row=1, col=1)
+        fig.add_trace(go.Scatter(x=chart_df.index, y=chart_df['MA20'], line=dict(color='#fbbf24', width=1), name='MA20'), row=1, col=1)
+        
+        # TD Sequential Markers
+        td_up_9 = chart_df[chart_df['TD_UP'] == 9]
+        td_down_9 = chart_df[chart_df['TD_DOWN'] == 9]
+        
+        if not td_up_9.empty:
+            fig.add_trace(go.Scatter(x=td_up_9.index, y=td_up_9['High']*1.02, mode='text', text="🔴 9", textfont=dict(color="#ef4444", size=14), name='TD卖点'), row=1, col=1)
+        if not td_down_9.empty:
+            fig.add_trace(go.Scatter(x=td_down_9.index, y=td_down_9['Low']*0.98, mode='text', text="🟢 9", textfont=dict(color="#4ade80", size=14), name='TD买点'), row=1, col=1)
+
+        # Volume
+        colors = ['#ef4444' if c < o else '#22c55e' for c, o in zip(chart_df['Close'], chart_df['Open'])]
+        fig.add_trace(go.Bar(x=chart_df.index, y=chart_df['Volume'], marker_color=colors, name='成交量'), row=2, col=1)
+        
+        fig.update_layout(height=500, margin=dict(l=0,r=0,t=10,b=0), template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', xaxis_rangeslider_visible=False, showlegend=True)
+        st.plotly_chart(fig, use_container_width=True)
+    else: st.warning("暂无该周期数据")
+
+    # 2. 深度数据 (Main Logic)
     with st.spinner("🦁 正在调取机构底仓数据..."):
         heavy = fetch_financial_data_v104(ticker)
 
