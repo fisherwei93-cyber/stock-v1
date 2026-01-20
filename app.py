@@ -49,7 +49,7 @@ st.markdown(f"""
     .ec-row {{ display: flex; justify-content: space-between; align-items: center; font-size: 13px; }}
     .ec-ticker {{ font-weight: bold; color: #fff; }}
     .ec-date {{ color: #cbd5e1; font-family: monospace; }}
-    .ec-time {{ font-size: 10px; color: #fbbf24; margin-left: 5px; }} 
+    .ec-time {{ font-size: 11px; color: #fbbf24; margin-left: 5px; font-weight: bold; }}
     .ec-sector {{ font-size: 10px; padding: 1px 4px; border-radius: 3px; background: #333; color: #aaa; margin-top: 4px; display: inline-block;}}
 
     /* 核心报价盘 */
@@ -144,7 +144,6 @@ def fetch_realtime_price(ticker):
         return {"price": price, "prev": prev, "ext_price": ext_price, "ext_label": ext_label}
     except: return {"price": 0, "prev": 0, "ext_price": None, "ext_label": ""}
 
-# [FIX] Named v105 to bust cache, standard implementation
 @st.cache_data(ttl=3600, show_spinner=False)
 def fetch_financial_data_v105(ticker):
     import yfinance as yf
@@ -241,7 +240,11 @@ def fetch_sector_earnings():
             if e_date:
                 ed = datetime.datetime.strptime(str(e_date).split()[0], "%Y-%m-%d").date()
                 if ed >= today:
-                    time_label = "盘后" if t in ['NVDA', 'TSLA', 'AAPL', 'AMZN'] else "盘前" # Simple heuristic
+                    # [NEW] Simple Time Logic (No guessing specific time, just rough period)
+                    time_label = "20:00 (盘前)" 
+                    if t in ['NVDA', 'TSLA', 'AAPL', 'AMZN', 'GOOG', 'META', 'AMD', 'MSFT']:
+                        time_label = "次日04:20 (盘后)"
+                    
                     results.append({"Code": t, "Sector": sec, "Date": str(ed), "Days": (ed - today).days, "Time": time_label, "Sort": (ed - today).days})
         except: pass
     return sorted(results, key=lambda x: x['Sort']) if results else []
@@ -584,44 +587,6 @@ if page == "🚀 股票分析":
             with c_bull: st.markdown(f"<div class='thesis-col thesis-bull'><b>🚀 多头逻辑</b><br>{'<br>'.join([f'✅ {b}' for b in bulls])}</div>", unsafe_allow_html=True)
             with c_bear: st.markdown(f"<div class='thesis-col thesis-bear'><b>🔻 空头逻辑</b><br>{'<br>'.join([f'⚠️ {b}' for b in bears])}</div>", unsafe_allow_html=True)
 
-        # Main Chart
-        with st.expander("📈 机构趋势图 (SuperTrend)", expanded=False):
-            fig = go.Figure()
-            fig.add_trace(go.Candlestick(x=h.index, open=h['Open'], high=h['High'], low=h['Low'], close=h['Close'], name='K线'))
-            fig.add_trace(go.Scatter(x=h.index, y=h['ST_Lower'], mode='markers', marker=dict(color='orange', size=2), name='止损线'))
-            fig.add_trace(go.Scatter(x=h.index, y=h['VWAP'], line=dict(color='#fcd34d', width=1), name='VWAP'))
-            for idx in range(len(h)-50, len(h)): 
-                if h['FVG_Bull'].iloc[idx]: fig.add_shape(type="rect", x0=h.index[idx-2], y0=h['Low'].iloc[idx], x1=h.index[idx], y1=h['High'].iloc[idx-2], fillcolor="rgba(139, 92, 246, 0.3)", line_width=0)
-            fig.update_layout(height=400, margin=dict(l=0,r=0,t=10,b=0), template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', xaxis_rangeslider_visible=False)
-            st.plotly_chart(fig, use_container_width=True)
-
-        # Seasonality
-        with st.expander("📅 季节性 & 蒙特卡洛", expanded=False):
-            c_seas, c_mc = st.columns(2)
-            with c_seas:
-                seas = calculate_seasonality(h)
-                if seas is not None:
-                    fig_seas = make_subplots(specs=[[{"secondary_y": True}]])
-                    fig_seas.add_trace(go.Bar(x=seas.index, y=seas['Avg Return']*100, name='平均回报', marker_color='#3b82f6'))
-                    fig_seas.add_trace(go.Scatter(x=seas.index, y=seas['Win Rate']*100, name='胜率', line=dict(color='#f97316')), secondary_y=True)
-                    fig_seas.update_layout(height=300, margin=dict(l=0,r=0,t=10,b=0), template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)')
-                    st.plotly_chart(fig_seas, use_container_width=True)
-            with c_mc:
-                last_price = h['Close'].iloc[-1]; daily_vol = h['Close'].pct_change().std()
-                simulations = 50; days = 30; sim_df = pd.DataFrame()
-                for x in range(simulations):
-                    price_series = [last_price]
-                    for y in range(days): price_series.append(price_series[-1] * (1 + np.random.normal(0, daily_vol)))
-                    sim_df[x] = price_series
-                fig_mc = go.Figure()
-                for col in sim_df.columns: fig_mc.add_trace(go.Scatter(y=sim_df[col], mode='lines', line=dict(color='rgba(59, 130, 246, 0.1)', width=1), showlegend=False))
-                fig_mc.add_trace(go.Scatter(y=[last_price]*days, mode='lines', line=dict(color='red', dash='dash'), name='当前价'))
-                fig_mc.update_layout(height=300, template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)')
-                st.plotly_chart(fig_mc, use_container_width=True)
-                final_prices = sim_df.iloc[-1].values
-                p5 = np.percentile(final_prices, 5); p95 = np.percentile(final_prices, 95)
-                st.markdown(f"<div class='mc-box'><span style='color:#fca5a5'>📉 底线(P5): <b>${p5:.2f}</b></span> <span style='color:#86efac'>🚀 乐观(P95): <b>${p95:.2f}</b></span></div>", unsafe_allow_html=True)
-
         # Advanced Indicators (Split View with Explanations)
         with st.expander("📉 进阶指标 (Z-Score/ADX/CCI)", expanded=False):
             # Z-Score
@@ -682,7 +647,7 @@ if page == "🚀 股票分析":
 
     # Tabs
     st.session_state.quant_score = calculate_quant_score(i, h)
-    tabs = st.tabs(["📰 资讯", "👥 持仓 (UI升级)", "💰 估值", "🎓 深度研报"])
+    tabs = st.tabs(["📰 资讯", "👥 持仓", "💰 估值", "🎓 深度研报"])
 
     with tabs[0]:
         news_df = process_news(heavy.get('news', []))
@@ -690,39 +655,51 @@ if page == "🚀 股票分析":
         else: st.info("暂无新闻")
         
     with tabs[1]:
-        # [NEW] Holdings UI Cards (Replaces standard dataframe)
         c1, c2 = st.columns(2)
+        # Institutional Holdings (Enhanced UI)
         with c1:
             st.subheader("🏦 机构持仓")
             if heavy.get('inst') is not None and not heavy['inst'].empty:
-                # Top 5 only to save space
-                for index, row in heavy['inst'].head(5).iterrows():
-                    pct = row.get('pctHeld', 0)
-                    val = row.get('Value', 0)
+                for index, row in heavy['inst'].head(10).iterrows():
                     holder = row.get('Holder', 'Unknown')
+                    val = row.get('Value', 0)
+                    pct = row.get('pctHeld', 0)
+                    link = f"https://www.google.com/search?q={holder}+holdings" # Google Search Link
                     st.markdown(f"""
                     <div class='hold-card'>
-                        <div>
-                            <div class='hold-name'>{holder}</div>
-                            <div class='hold-sub'>持有市值: <span style='color:#fff'>${fmt_big(val)}</span></div>
-                        </div>
-                        <div style='text-align:right'>
-                            <div class='hold-val'>{fmt_pct(pct)}</div>
-                            <div class='hold-bar-bg'><div class='hold-bar-fill' style='width:{min(100, pct*100*5)}%'></div></div>
-                        </div>
+                        <div class='hold-link'><a href='{link}' target='_blank'>{holder}</a><div class='hold-sub'>市值: ${fmt_big(val)}</div></div>
+                        <div style='text-align:right'><div class='hold-val'>{fmt_pct(pct)}</div><div class='hold-bar-container'><div class='hold-bar-fill' style='width:{min(100, pct*1000)}%'></div></div></div>
                     </div>
                     """, unsafe_allow_html=True)
             else: st.info("暂无数据")
+        
+        # Insider Trading (Enhanced UI)
         with c2:
             st.subheader("🕴️ 内部交易")
             if heavy.get('insider') is not None and not heavy['insider'].empty:
-                for index, row in heavy['insider'].head(5).iterrows():
+                for index, row in heavy['insider'].head(15).iterrows():
                     insider = row.get('Insider', 'Unknown')
                     relation = row.get('Position', '')
                     shares = row.get('Shares', 0)
                     trans = row.get('Text', '')
-                    # Color code transaction
-                    color = "#ef4444" if "Sale" in trans else "#4ade80"
+                    # [FIX] Smart Translation for Insider Text (Added in V105)
+                    action = "❓ 未知"
+                    color = "#9ca3af"
+                    if "Sale" in trans or "Sold" in trans:
+                        action = "🔴 减持"
+                        color = "#ef4444"
+                    elif "Purchase" in trans or "Buy" in trans:
+                        action = "🟢 增持"
+                        color = "#4ade80"
+                    elif "Grant" in trans:
+                        action = "🎁 获赠"
+                        color = "#fbbf24"
+                    elif "Exercise" in trans:
+                        action = "💪 行权"
+                        color = "#3b82f6"
+                    
+                    price_match = re.search(r'price\s\$?(\d+\.?\d*)', trans)
+                    price = f"${price_match.group(1)}" if price_match else "-"
                     
                     st.markdown(f"""
                     <div class='hold-card'>
@@ -731,7 +708,7 @@ if page == "🚀 股票分析":
                             <div class='hold-sub'>{relation}</div>
                         </div>
                         <div style='text-align:right'>
-                            <div style='color:{color};font-weight:bold'>{trans[:10]}...</div>
+                            <div style='color:{color};font-weight:bold'>{action} (均价 {price})</div>
                             <div class='hold-val'>{shares}股</div>
                         </div>
                     </div>
@@ -792,7 +769,7 @@ elif page == "🗓️ 财报地图":
         fig.update_traces(textinfo="label+text", texttemplate="%{label}<br>T-%{customdata[1]}") # Use standard update_traces
         fig.update_layout(height=600, template="plotly_dark", margin=dict(t=30, l=0, r=0, b=0))
         st.plotly_chart(fig, use_container_width=True)
-        with st.expander("查看详细时间表"): st.dataframe(df[['Code', 'Sector', 'Date', 'Days']].set_index('Code'), use_container_width=True)
+        with st.expander("查看详细时间表"): st.dataframe(df[['Code', 'Sector', 'Date', 'Days', 'Time']].set_index('Code'), use_container_width=True)
     else: st.info("数据更新中...")
 
 else:
