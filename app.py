@@ -17,7 +17,7 @@ for key in ['HTTP_PROXY', 'HTTPS_PROXY', 'http_proxy', 'https_proxy']:
 
 ICON_URL = "https://cdn-icons-png.flaticon.com/512/10452/10452449.png"
 
-st.set_page_config(page_title="摩根·V1 (Lite)", layout="wide", page_icon="🦁")
+st.set_page_config(page_title="摩根·V1 (Final)", layout="wide", page_icon="🦁")
 
 # ================= 2. 样式死锁 (UI) =================
 st.markdown(f"""
@@ -49,7 +49,7 @@ st.markdown(f"""
     .ec-row {{ display: flex; justify-content: space-between; align-items: center; font-size: 13px; }}
     .ec-ticker {{ font-weight: bold; color: #fff; }}
     .ec-date {{ color: #cbd5e1; font-family: monospace; }}
-    .ec-time {{ font-size: 11px; color: #fbbf24; margin-left: 5px; font-weight: bold; }}
+    .ec-time {{ font-size: 10px; color: #fbbf24; margin-left: 5px; }} 
     .ec-sector {{ font-size: 10px; padding: 1px 4px; border-radius: 3px; background: #333; color: #aaa; margin-top: 4px; display: inline-block;}}
 
     /* 核心报价盘 */
@@ -144,13 +144,11 @@ def fetch_realtime_price(ticker):
         return {"price": price, "prev": prev, "ext_price": ext_price, "ext_label": ext_label}
     except: return {"price": 0, "prev": 0, "ext_price": None, "ext_label": ""}
 
-# [FIX] V105.1: 增加对每个子模块的 try-except 保护，防止 NVDA 等热门股报错
 @st.cache_data(ttl=3600, show_spinner=False)
-def fetch_financial_data_v105(ticker):
+def fetch_financial_data_v104(ticker):
     import yfinance as yf
     max_retries = 3; h = pd.DataFrame()
     s = yf.Ticker(ticker)
-    
     for attempt in range(max_retries):
         try:
             h = s.history(period="2y")
@@ -178,6 +176,7 @@ def fetch_financial_data_v105(ticker):
     wma_half = wma(h['Close'], period // 2); wma_full = wma(h['Close'], period)
     h['HMA'] = wma(2 * wma_half - wma_full, int(np.sqrt(period)))
     
+    # Advanced
     plus_dm = h['High'].diff(); minus_dm = h['Low'].diff()
     plus_dm[plus_dm < 0] = 0; minus_dm[minus_dm > 0] = 0; minus_dm = minus_dm.abs()
     tr14 = h['TR'].rolling(14).sum()
@@ -211,38 +210,13 @@ def fetch_financial_data_v105(ticker):
         cmp_norm = cmp_df.iloc[start:] / cmp_df.iloc[start] - 1
     except: pass
 
-    # [FIX] V105.1: 独立熔断保护，防止单个模块报错导致崩溃
     safe_info = {}
-    try: safe_info = s.info if s.info else {}
-    except: pass
-    
-    upgrades = None
-    try: upgrades = s.upgrades_downgrades
-    except: pass
-    
-    inst = None
-    try: inst = s.institutional_holders
-    except: pass
-    
-    insider = None
-    try: insider = s.insider_transactions
-    except: pass
-    
-    fin = None
-    try: fin = s.quarterly_financials
-    except: pass
+    try:
+        safe_info = s.info
+        if safe_info is None: safe_info = {}
+    except: safe_info = {}
 
-    return {
-        "history": h, 
-        "info": safe_info, 
-        "compare": cmp_norm, 
-        "error": None, 
-        "upgrades": upgrades, 
-        "inst": inst, 
-        "insider": insider, 
-        "fin": fin, 
-        "options": None
-    }
+    return {"history": h, "info": safe_info, "compare": cmp_norm, "error": None, "upgrades": s.upgrades_downgrades, "inst": s.institutional_holders, "insider": s.insider_transactions, "fin": s.quarterly_financials, "options": None}
 
 @st.cache_data(ttl=43200, show_spinner=False)
 def fetch_sector_earnings():
@@ -267,11 +241,7 @@ def fetch_sector_earnings():
             if e_date:
                 ed = datetime.datetime.strptime(str(e_date).split()[0], "%Y-%m-%d").date()
                 if ed >= today:
-                    # [NEW] Determine Pre/Post market time label (Beijing Time Logic)
-                    time_label = "20:00 (盘前)" 
-                    if t in ['NVDA', 'TSLA', 'AAPL', 'AMZN', 'GOOG', 'META', 'AMD', 'MSFT']:
-                        time_label = "次日04:20 (盘后)"
-                    
+                    time_label = "盘后" if t in ['NVDA', 'TSLA', 'AAPL', 'AMZN'] else "盘前" 
                     results.append({"Code": t, "Sector": sec, "Date": str(ed), "Days": (ed - today).days, "Time": time_label, "Sort": (ed - today).days})
         except: pass
     return sorted(results, key=lambda x: x['Sort']) if results else []
@@ -340,7 +310,7 @@ def calculate_vision_analysis(df, info):
     ma20 = df['MA20'].iloc[-1]; ma60 = df['MA60'].iloc[-1]; ma200 = df['MA200'].iloc[-1]
     low_52w = df['Low'].tail(250).min(); high_52w = df['High'].tail(250).max()
     pts = []
-    if curr < ma20: pts.append({"t":"res", "l":"小", "v":ma20, "d":"MA20/反压"})
+    if curr < ma20: pts.append({"t":"res", "l":"小", "v":ma20, "d":"MA20/短线反压"})
     if curr < ma60: pts.append({"t":"res", "l":"中", "v":ma60, "d":"MA60/生命线"})
     if curr < high_52w: pts.append({"t":"res", "l":"强", "v":high_52w, "d":"52W前高"})
     if curr > ma20: pts.append({"t":"sup", "l":"小", "v":ma20, "d":"MA20/支撑"})
@@ -544,10 +514,9 @@ if page == "🚀 股票分析":
     c_btn[2].link_button("👽 Reddit", f"https://www.reddit.com/search/?q=${ticker}")
     c_btn[3].link_button("🐦 Twitter", f"https://twitter.com/search?q=${ticker}")
 
-    # 2. 深度数据
+    # 2. 深度数据 (Main Logic)
     with st.spinner("🦁 正在调取机构底仓数据..."):
-        # [FIX] V105.1 with try-except blocks
-        heavy = fetch_financial_data_v105(ticker)
+        heavy = fetch_financial_data_v104(ticker)
 
     if heavy['error']:
         st.warning(f"深度数据暂时不可用: {heavy['error']}")
@@ -614,7 +583,7 @@ if page == "🚀 股票分析":
             with c_bull: st.markdown(f"<div class='thesis-col thesis-bull'><b>🚀 多头逻辑</b><br>{'<br>'.join([f'✅ {b}' for b in bulls])}</div>", unsafe_allow_html=True)
             with c_bear: st.markdown(f"<div class='thesis-col thesis-bear'><b>🔻 空头逻辑</b><br>{'<br>'.join([f'⚠️ {b}' for b in bears])}</div>", unsafe_allow_html=True)
 
-        # Main Chart
+        # Main Chart (SuperTrend)
         with st.expander("📈 机构趋势图 (SuperTrend)", expanded=False):
             fig = go.Figure()
             fig.add_trace(go.Candlestick(x=h.index, open=h['Open'], high=h['High'], low=h['Low'], close=h['Close'], name='K线'))
@@ -625,7 +594,7 @@ if page == "🚀 股票分析":
             fig.update_layout(height=400, margin=dict(l=0,r=0,t=10,b=0), template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', xaxis_rangeslider_visible=False)
             st.plotly_chart(fig, use_container_width=True)
 
-        # Seasonality
+        # Seasonality & Monte Carlo
         with st.expander("📅 季节性 & 蒙特卡洛", expanded=False):
             c_seas, c_mc = st.columns(2)
             with c_seas:
@@ -721,7 +690,7 @@ if page == "🚀 股票分析":
         
     with tabs[1]:
         c1, c2 = st.columns(2)
-        # Institutional Holdings (Enhanced UI)
+        # Institutional Holdings
         with c1:
             st.subheader("🏦 机构持仓")
             if heavy.get('inst') is not None and not heavy['inst'].empty:
@@ -738,44 +707,21 @@ if page == "🚀 股票分析":
                     """, unsafe_allow_html=True)
             else: st.info("暂无数据")
         
-        # Insider Trading (Enhanced UI)
+        # Insider Trading
         with c2:
             st.subheader("🕴️ 内部交易")
             if heavy.get('insider') is not None and not heavy['insider'].empty:
-                for index, row in heavy['insider'].head(15).iterrows():
+                for index, row in heavy['insider'].head(10).iterrows():
                     insider = row.get('Insider', 'Unknown')
                     relation = row.get('Position', '')
                     shares = row.get('Shares', 0)
-                    trans = str(row.get('Text', ''))
-                    # [FIX] Smart Translation for Insider Text
-                    action = "❓ 未知"
-                    color = "#9ca3af"
-                    if "Sale" in trans or "Sold" in trans:
-                        action = "🔴 减持"
-                        color = "#ef4444"
-                    elif "Purchase" in trans or "Buy" in trans:
-                        action = "🟢 增持"
-                        color = "#4ade80"
-                    elif "Grant" in trans:
-                        action = "🎁 获赠"
-                        color = "#fbbf24"
-                    elif "Exercise" in trans:
-                        action = "💪 行权"
-                        color = "#3b82f6"
-                    
-                    price_match = re.search(r'price\s\$?(\d+\.?\d*)', trans)
-                    price = f"${price_match.group(1)}" if price_match else "-"
-                    
+                    trans = row.get('Text', '')
+                    color = "#ef4444" if "Sale" in trans else "#4ade80"
+                    link = f"https://www.google.com/search?q={insider}+{ticker}"
                     st.markdown(f"""
                     <div class='hold-card'>
-                        <div>
-                            <div class='hold-name'>{insider}</div>
-                            <div class='hold-sub'>{relation}</div>
-                        </div>
-                        <div style='text-align:right'>
-                            <div style='color:{color};font-weight:bold'>{action} (均价 {price})</div>
-                            <div class='hold-val'>{shares}股</div>
-                        </div>
+                        <div class='hold-link'><a href='{link}' target='_blank'>{insider}</a><div class='hold-sub'>{relation}</div></div>
+                        <div style='text-align:right'><div style='color:{color};font-weight:bold'>{trans[:10]}...</div><div class='hold-val'>{shares}股</div></div>
                     </div>
                     """, unsafe_allow_html=True)
             else: st.info("暂无数据")
@@ -799,9 +745,9 @@ if page == "🚀 股票分析":
             st.metric("估值", f"${val:.2f}")
 
     with tabs[3]:
-        st.header(f"🎓 {ticker} 深度研报")
+        st.header(f"🎓 {ticker} 深度研报 (商业模式)")
         st.markdown(f"<div class='report-text'>{safe_i.get('longBusinessSummary', '暂无描述')}</div>", unsafe_allow_html=True)
-        st.markdown("<div class='report-title'>2. 🏰 护城河 (Moat Analysis)</div>", unsafe_allow_html=True)
+        st.markdown("<div class='report-title'>2. 🏰 护城河分析</div>", unsafe_allow_html=True)
         gm = safe_i.get('grossMargins', 0); roe = safe_i.get('returnOnEquity', 0)
         c_m1, c_m2 = st.columns(2)
         c_m1.markdown(f"<div class='score-card'><div class='sc-lbl'>毛利率</div><div class='sc-val' style='color:{'#4ade80' if gm>0.4 else '#f87171'}'>{fmt_pct(gm)}</div><div class='sc-lbl'>标准: >40%</div></div>", unsafe_allow_html=True)
@@ -830,10 +776,10 @@ elif page == "🗓️ 财报地图":
         fig = px.treemap(df, path=[px.Constant("全市场"), 'Sector', 'Code'], values=np.ones(len(df)), 
                          color='Days', color_continuous_scale='RdYlGn', 
                          hover_data=['Date', 'Days'])
-        fig.update_traces(textinfo="label+text", texttemplate="%{label}<br>T-%{customdata[1]}") # Use standard update_traces
+        fig.update_traces(textinfo="label+text", texttemplate="%{label}<br>T-%{customdata[1]}") 
         fig.update_layout(height=600, template="plotly_dark", margin=dict(t=30, l=0, r=0, b=0))
         st.plotly_chart(fig, use_container_width=True)
-        with st.expander("查看详细时间表"): st.dataframe(df[['Code', 'Sector', 'Date', 'Days', 'Time']].set_index('Code'), use_container_width=True)
+        with st.expander("查看详细时间表"): st.dataframe(df[['Code', 'Sector', 'Date', 'Days']].set_index('Code'), use_container_width=True)
     else: st.info("数据更新中...")
 
 else:
