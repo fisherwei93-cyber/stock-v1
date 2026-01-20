@@ -17,7 +17,7 @@ for key in ['HTTP_PROXY', 'HTTPS_PROXY', 'http_proxy', 'https_proxy']:
 
 ICON_URL = "https://cdn-icons-png.flaticon.com/512/10452/10452449.png"
 
-st.set_page_config(page_title="摩根·V1 (Full)", layout="wide", page_icon="🦁")
+st.set_page_config(page_title="摩根·V1 (Final)", layout="wide", page_icon="🦁")
 
 # ================= 2. 样式死锁 (UI) =================
 st.markdown(f"""
@@ -91,7 +91,6 @@ st.markdown(f"""
     /* 标签与按钮 */
     .tg-s {{ background: rgba(0,0,0,0.1); padding: 1px 5px; border-radius: 4px; font-size: 11px; margin-left: 6px; color: #333; }}
     .earning-row {{ display: flex; justify-content: space-between; padding: 8px; border-bottom: 1px solid #333; font-size: 13px; }}
-    .earning-soon {{ border-left: 3px solid #ef4444; background: rgba(239, 68, 68, 0.1); }}
     
     /* 多空博弈 */
     .thesis-col {{ flex: 1; padding: 10px; border-radius: 6px; font-size: 13px; margin-top:5px; }}
@@ -105,6 +104,7 @@ st.markdown(f"""
     .wl-row {{ background-color: #1A1A1A; padding: 12px; margin-bottom: 8px; border-radius: 6px; border-left: 4px solid #555; display: flex; justify-content: space-between; align-items: center; color: #FFFFFF; }}
     .social-box {{ display: flex; gap: 10px; margin-top: 10px; }}
     .mc-box {{ background: #0f172a; border: 1px solid #1e293b; padding: 10px; border-radius: 6px; margin-top:5px; }}
+    .note-box {{ background: #1e1b4b; border-left: 4px solid #6366f1; padding: 10px; font-size: 12px; color: #e0e7ff; margin-top: 5px; border-radius: 4px; line-height: 1.6; }}
     
     .streamlit-expanderHeader {{ background-color: #222 !important; color: #fff !important; border: 1px solid #444; }}
     
@@ -113,7 +113,6 @@ st.markdown(f"""
     .report-text {{ font-size: 15px; line-height: 1.8; color: #E5E7EB; margin-bottom: 20px; background: #1A1A1A; padding: 15px; border-radius: 8px; }}
     .guru-check {{ display: flex; align-items: center; margin-bottom: 8px; padding: 8px; background: #262626; border-radius: 6px; }}
     
-    /* Wiki Card */
     .wiki-card {{ background: #1A1A1A; border: 1px solid #333; border-radius: 8px; padding: 20px; margin-bottom: 20px; }}
     .wiki-title {{ font-size: 20px; font-weight: bold; color: #FF9F1C; margin-bottom: 15px; border-bottom: 1px solid #444; padding-bottom: 5px; }}
     .wiki-text {{ font-size: 14px; color: #E5E7EB; line-height: 1.8; margin-bottom: 10px; }}
@@ -249,14 +248,15 @@ def fetch_heavy_data(ticker):
     except: pass
 
     safe_info = s.info if s.info is not None else {}
-    return {"history": h, "info": safe_info, "compare": cmp_norm, "error": None, "upgrades": s.upgrades_downgrades, "inst": s.institutional_holders, "insider": s.insider_transactions, "fin": s.quarterly_financials, "options": None} # Added back full data fields
+    return {"history": h, "info": safe_info, "compare": cmp_norm, "error": None, "upgrades": s.upgrades_downgrades, "inst": s.institutional_holders, "insider": s.insider_transactions, "fin": s.quarterly_financials, "options": None}
 
 @st.cache_data(ttl=43200, show_spinner=False)
 def fetch_sector_earnings():
     sectors = {
         "💻 科技": ["NVDA", "AAPL", "MSFT", "GOOG", "AMZN", "META", "TSLA"],
         "🏦 金融": ["JPM", "BAC", "V", "COIN", "BLK"],
-        "💊 医药": ["LLY", "JNJ", "PG"],
+        "💊 医药": ["LLY", "JNJ", "PG", "KO", "MCD"],
+        "⛽ 能源": ["XOM", "CVX", "CAT", "GE"],
         "💎 芯片": ["AMD", "AVGO", "TSM", "QCOM"]
     }
     flat_list = []
@@ -405,6 +405,16 @@ if 'current_ticker' not in st.session_state: st.session_state.current_ticker = '
 with st.sidebar:
     st.title("🦁 摩根·V1")
     
+    # 1. Navigation at TOP
+    page = st.radio("📌 导航", ["🚀 股票分析", "🗓️ 财报地图", "📖 功能说明书"])
+    
+    # 2. Score Card (Shows if data exists)
+    if 'quant_score' in st.session_state:
+        s, n = st.session_state.quant_score
+        c = "#4ade80" if s>=60 else "#f87171"
+        st.markdown(f"<div class='score-card'><div class='sc-lbl'>MORGAN SCORE</div><div class='sc-val' style='color:{c}'>{s}</div><div class='sc-lbl' style='color:#9CA3AF'>{n}</div></div>", unsafe_allow_html=True)
+
+    # 3. YouTube
     with st.expander("📺 视频分析", expanded=False):
         yt_url = st.text_input("YouTube Link", placeholder="粘贴URL...")
         if st.button("🚀 提取"):
@@ -416,19 +426,32 @@ with st.sidebar:
                 st.text_area("内容:", f"{txt[:6000]}...", height=150)
             except Exception as e: st.error(f"失败: {e}")
 
+    # 4. Search
     new_ticker = st.text_input("🔍 搜索", "").upper()
     if new_ticker: st.session_state.current_ticker = new_ticker; st.rerun()
 
+    # 5. Earnings Radar (Sidebar - More items)
     st.markdown("---")
-    st.caption("📅 财报雷达")
+    st.caption("📅 财报雷达 (即将发布)")
     earnings_list = fetch_sector_earnings()
     if earnings_list:
-        urgent = [x for x in earnings_list if x['Days'] <= 7]
-        if urgent:
-            for item in urgent:
-                st.markdown(f"<div class='earning-card earning-alert'><div class='ec-row'><span class='ec-ticker'>{item['Code']}</span><span class='ec-date'>{item['Date']}</span></div><div class='ec-sector'>{item['Sector']}</div></div>", unsafe_allow_html=True)
-        else: st.caption("近期无关注财报")
+        # Show top 10 regardless of date, highlighting urgent ones
+        for item in earnings_list[:10]: 
+            is_urgent = item['Days'] <= 7
+            bg_style = "earning-alert" if is_urgent else "earning-card"
+            icon = "🚨" if is_urgent else "📅"
+            st.markdown(f"""
+            <div class='earning-card {bg_style}'>
+                <div class='ec-row'>
+                    <span class='ec-ticker'>{icon} {item['Code']}</span>
+                    <span class='ec-date'>{item['Date']} (T-{item['Days']})</span>
+                </div>
+                <div class='ec-sector'>{item['Sector']}</div>
+            </div>
+            """, unsafe_allow_html=True)
+    else: st.caption("数据更新中...")
 
+    # 6. Watchlist
     st.markdown("---")
     st.caption("我的自选")
     for t in st.session_state.watchlist:
@@ -440,9 +463,7 @@ with st.sidebar:
             st.session_state.current_ticker = t; st.rerun()
         c2.markdown(f"<span style='color:{c_color}'>{chg:.2%}</span>", unsafe_allow_html=True)
 
-# Main Page
-page = st.sidebar.radio("📌 导航", ["🚀 股票分析", "🗓️ 财报地图", "📖 功能说明书"])
-
+# Main Page Content
 if page == "🚀 股票分析":
     ticker = st.session_state.current_ticker
     
@@ -502,7 +523,7 @@ if page == "🚀 股票分析":
             </div>
             """, unsafe_allow_html=True)
 
-        # Comparison Chart
+        # Comparison Chart (Default Closed)
         with st.expander("🆚 跑赢大盘了吗? (点击展开)", expanded=False):
             cmp = heavy.get('compare', pd.DataFrame())
             if not cmp.empty:
@@ -513,15 +534,15 @@ if page == "🚀 股票分析":
                 fig2.update_layout(height=300, margin=dict(l=0,r=0,t=30,b=0), template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)')
                 st.plotly_chart(fig2, use_container_width=True)
 
-        # Thesis
+        # Thesis (Default Closed)
         bulls, bears = generate_bull_bear_thesis(h, i)
-        with st.expander("🐂 vs 🐻 智能多空博弈 (AI Thesis)", expanded=True):
+        with st.expander("🐂 vs 🐻 智能多空博弈 (AI Thesis)", expanded=False):
             c_bull, c_bear = st.columns(2)
             with c_bull: st.markdown(f"<div class='thesis-col thesis-bull'><b>🚀 多头逻辑</b><br>{'<br>'.join([f'✅ {b}' for b in bulls])}</div>", unsafe_allow_html=True)
             with c_bear: st.markdown(f"<div class='thesis-col thesis-bear'><b>🔻 空头逻辑</b><br>{'<br>'.join([f'⚠️ {b}' for b in bears])}</div>", unsafe_allow_html=True)
 
-        # Main Chart
-        with st.expander("📈 机构趋势图 (SuperTrend)", expanded=True):
+        # Main Chart (SuperTrend - Default Closed)
+        with st.expander("📈 机构趋势图 (SuperTrend)", expanded=False):
             fig = go.Figure()
             fig.add_trace(go.Candlestick(x=h.index, open=h['Open'], high=h['High'], low=h['Low'], close=h['Close'], name='K线'))
             fig.add_trace(go.Scatter(x=h.index, y=h['ST_Lower'], mode='markers', marker=dict(color='orange', size=2), name='止损线'))
@@ -531,8 +552,8 @@ if page == "🚀 股票分析":
             fig.update_layout(height=400, margin=dict(l=0,r=0,t=10,b=0), template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', xaxis_rangeslider_visible=False)
             st.plotly_chart(fig, use_container_width=True)
 
-        # Seasonality & Monte Carlo
-        with st.expander("📅 季节性 & 蒙特卡洛"):
+        # Seasonality & Monte Carlo (Closed)
+        with st.expander("📅 季节性 & 蒙特卡洛", expanded=False):
             c_seas, c_mc = st.columns(2)
             with c_seas:
                 seas = calculate_seasonality(h)
@@ -558,8 +579,8 @@ if page == "🚀 股票分析":
                 p5 = np.percentile(final_prices, 5); p95 = np.percentile(final_prices, 95)
                 st.markdown(f"<div class='mc-box'><span style='color:#fca5a5'>📉 底线(P5): <b>${p5:.2f}</b></span> <span style='color:#86efac'>🚀 乐观(P95): <b>${p95:.2f}</b></span></div>", unsafe_allow_html=True)
 
-        # Advanced Indicators
-        with st.expander("📉 进阶指标 (Z-Score/ADX/CCI)"):
+        # Advanced Indicators (Closed)
+        with st.expander("📉 进阶指标 (Z-Score/ADX/CCI)", expanded=False):
             vp_price, vp_vol = calculate_volume_profile(h.iloc[-252:])
             fig3 = make_subplots(rows=4, cols=2, shared_xaxes=True, row_heights=[0.25]*4, column_widths=[0.85, 0.15], specs=[[{"colspan":2}, None], [{"colspan":2}, None], [{"colspan":2}, None], [{"colspan":1}, {}]])
             fig3.add_trace(go.Scatter(x=h.index, y=h['Z_Score'], line=dict(color='#f472b6', width=1), name='Z-Score'), row=1, col=1)
@@ -573,33 +594,16 @@ if page == "🚀 股票分析":
             fig3.update_layout(height=800, margin=dict(l=0,r=0,t=10,b=0), template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)')
             st.plotly_chart(fig3, use_container_width=True)
 
-        # [NEW] Insert Radar & Gauge (Revived Features)
-        with st.expander("🦁 市场情绪 & 基本面雷达 (复活版)", expanded=False):
+        # [NEW] Radar & Gauge
+        with st.expander("🦁 市场情绪 & 基本面雷达", expanded=False):
             c1, c2 = st.columns(2)
-            with c1: # Sentiment Gauge
-                # Simple proxy for Fear/Greed using RSI
+            with c1:
                 rsi_val = h['RSI'].iloc[-1]
-                fig_gauge = go.Figure(go.Indicator(
-                    mode = "gauge+number", value = rsi_val,
-                    title = {'text': "市场情绪 (RSI)"},
-                    gauge = {'axis': {'range': [0, 100]},
-                             'bar': {'color': "#3b82f6"},
-                             'steps': [
-                                 {'range': [0, 30], 'color': "rgba(34, 197, 94, 0.3)"},
-                                 {'range': [70, 100], 'color': "rgba(239, 68, 68, 0.3)"}],
-                             'threshold': {'line': {'color': "white", 'width': 4}, 'thickness': 0.75, 'value': rsi_val}}))
+                fig_gauge = go.Figure(go.Indicator(mode = "gauge+number", value = rsi_val, title = {'text': "情绪 (RSI)"}, gauge = {'axis': {'range': [0, 100]}, 'bar': {'color': "#3b82f6"}}))
                 fig_gauge.update_layout(height=250, margin=dict(l=20,r=20,t=30,b=20), paper_bgcolor='rgba(0,0,0,0)', font={'color': "white"})
                 st.plotly_chart(fig_gauge, use_container_width=True)
-            with c2: # Radar
-                # Standardize values to 0-100 scale for radar
-                f_data = {
-                    'PE': 100 - min(100, i.get('forwardPE', 50) or 50),
-                    'Growth': (i.get('revenueGrowth', 0) or 0) * 100,
-                    'Profit': (i.get('profitMargins', 0) or 0) * 100,
-                    'Short': 100 - min(100, ((i.get('shortPercentOfFloat', 0) or 0) * 100)*2),
-                    'Analyst': (6 - (i.get('recommendationMean', 3) or 3)) * 20,
-                    'ROE': (i.get('returnOnEquity', 0) or 0) * 100
-                }
+            with c2:
+                f_data = {'PE': 100 - min(100, i.get('forwardPE', 50) or 50), 'Growth': (i.get('revenueGrowth', 0) or 0) * 100, 'Profit': (i.get('profitMargins', 0) or 0) * 100, 'Short': 100 - min(100, ((i.get('shortPercentOfFloat', 0) or 0) * 100)*2), 'Analyst': (6 - (i.get('recommendationMean', 3) or 3)) * 20, 'ROE': (i.get('returnOnEquity', 0) or 0) * 100}
                 df_radar = pd.DataFrame(dict(r=list(f_data.values()), theta=list(f_data.keys())))
                 fig_radar = px.line_polar(df_radar, r='r', theta='theta', line_close=True)
                 fig_radar.update_traces(fill='toself', line_color='#4ade80')
@@ -614,7 +618,7 @@ if page == "🚀 股票分析":
     c2.metric("做空比", fmt_pct(safe_i.get('shortPercentOfFloat')))
     c3.metric("股息率", fmt_pct(safe_i.get('dividendYield')))
 
-    # Macro Correlation (Restored)
+    # Macro Correlation
     with st.expander("🌍 宏观联动 (BTC/Gold/SPY)", expanded=False):
         corrs = fetch_correlation_data(ticker)
         if corrs is not None: st.bar_chart(corrs)
@@ -658,15 +662,28 @@ if page == "🚀 股票分析":
             st.metric("估值", f"${val:.2f}")
 
     with tabs[3]:
+        # [RESTORED] Full Buffett/Guru Checklist
         st.header(f"🎓 {ticker} 深度研报")
         st.markdown(f"<div class='report-text'>{safe_i.get('longBusinessSummary', '暂无描述')}</div>", unsafe_allow_html=True)
-        st.markdown("<div class='report-title'>2. 🏰 护城河</div>", unsafe_allow_html=True)
+        
+        st.markdown("<div class='report-title'>2. 🏰 护城河 (Moat Analysis)</div>", unsafe_allow_html=True)
         gm = safe_i.get('grossMargins', 0); roe = safe_i.get('returnOnEquity', 0)
         c_m1, c_m2 = st.columns(2)
-        c_m1.markdown(f"<div class='score-card'><div class='sc-lbl'>毛利率</div><div class='sc-val' style='color:{'#4ade80' if gm>0.4 else '#f87171'}'>{fmt_pct(gm)}</div></div>", unsafe_allow_html=True)
-        c_m2.markdown(f"<div class='score-card'><div class='sc-lbl'>ROE</div><div class='sc-val' style='color:{'#4ade80' if roe>0.15 else '#f87171'}'>{fmt_pct(roe)}</div></div>", unsafe_allow_html=True)
+        c_m1.markdown(f"<div class='score-card'><div class='sc-lbl'>毛利率</div><div class='sc-val' style='color:{'#4ade80' if gm>0.4 else '#f87171'}'>{fmt_pct(gm)}</div><div class='sc-lbl'>标准: >40%</div></div>", unsafe_allow_html=True)
+        c_m2.markdown(f"<div class='score-card'><div class='sc-lbl'>ROE</div><div class='sc-val' style='color:{'#4ade80' if roe>0.15 else '#f87171'}'>{fmt_pct(roe)}</div><div class='sc-lbl'>标准: >15%</div></div>", unsafe_allow_html=True)
         
-        st.markdown("<div class='report-title'>3. 📞 尽职调查</div>", unsafe_allow_html=True)
+        st.markdown("<div class='report-title'>3. 🧘‍♂️ 大师检查清单 (Guru Checklist)</div>", unsafe_allow_html=True)
+        peg = safe_i.get('pegRatio')
+        lynch_pass = peg is not None and peg < 1.0
+        st.markdown(f"<div class='guru-check'><span style='font-size:20px; margin-right:10px'>{'✅' if lynch_pass else '❌'}</span><div><b>彼得·林奇法则</b><br><span style='color:#9ca3af; font-size:13px'>PEG Ratio < 1.0 (当前: {peg})</span></div></div>", unsafe_allow_html=True)
+        
+        graham_pass = False
+        if eps is not None and bvps is not None and eps > 0 and bvps > 0 and rt_price > 0:
+            graham_price = (22.5 * eps * bvps) ** 0.5
+            graham_pass = rt_price < graham_price
+            st.markdown(f"<div class='guru-check'><span style='font-size:20px; margin-right:10px'>{'✅' if graham_pass else '❌'}</span><div><b>格雷厄姆法则</b><br><span style='color:#9ca3af; font-size:13px'>股价 < 格雷厄姆数字 (${graham_price:.2f})</span></div></div>", unsafe_allow_html=True)
+
+        st.markdown("<div class='report-title'>4. 📞 尽职调查</div>", unsafe_allow_html=True)
         dd1, dd2 = st.columns(2)
         dd1.link_button("📄 SEC 10-K", f"https://www.sec.gov/cgi-bin/browse-edgar?CIK={ticker}")
         dd2.link_button("🗣️ Earnings Call", f"https://www.google.com/search?q={ticker}+earnings+call+transcript")
