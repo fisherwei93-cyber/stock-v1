@@ -8,6 +8,7 @@ import plotly.graph_objects as go
 import plotly.express as px
 from plotly.subplots import make_subplots
 import re 
+import yfinance as yf # 全局导入防报错
 
 # ================= 1. 铁律配置 =================
 for key in ['HTTP_PROXY', 'HTTPS_PROXY', 'http_proxy', 'https_proxy']:
@@ -16,20 +17,21 @@ for key in ['HTTP_PROXY', 'HTTPS_PROXY', 'http_proxy', 'https_proxy']:
 
 ICON_URL = "https://cdn-icons-png.flaticon.com/512/10452/10452449.png"
 
-st.set_page_config(page_title="摩根·V1 (Classic)", layout="wide", page_icon="🦁")
+st.set_page_config(page_title="摩根·V1 (Map)", layout="wide", page_icon="🦁")
 
+# ================= 2. 样式死锁 (UI) =================
 st.markdown(f"""
 <head>
     <link rel="apple-touch-icon" href="{ICON_URL}">
     <link rel="icon" type="image/png" href="{ICON_URL}">
 </head>
 <style>
-    /* 全局配置 */
+    /* 全局背景 */
     .stApp {{ background-color: #000000 !important; color: #FFFFFF !important; }}
     section[data-testid="stSidebar"] {{ background-color: #111111 !important; }}
     header {{ visibility: visible !important; }}
 
-    /* 核心高亮 */
+    /* 指标高亮 */
     div[data-testid="stMetricValue"] {{
         color: #FFFFFF !important; 
         font-size: 28px !important;
@@ -38,7 +40,7 @@ st.markdown(f"""
     }}
     div[data-testid="stMetricLabel"] {{ color: #9CA3AF !important; font-weight: 700 !important; }}
     
-    /* 侧边栏财报卡片 */
+    /* 侧边栏财报卡片 (V92新增) */
     .earning-card {{
         background: #1e1b4b; 
         border-left: 4px solid #6366f1;
@@ -61,27 +63,6 @@ st.markdown(f"""
     .ec-date {{ color: #cbd5e1; font-family: monospace; }}
     .ec-sector {{ font-size: 10px; padding: 1px 4px; border-radius: 3px; background: #333; color: #aaa; margin-top: 4px; display: inline-block;}}
 
-    /* 视野黄框 */
-    .l-box {{
-        background-color: #FF9F1C; color: #000000 !important; padding: 15px;
-        border-radius: 8px; margin-bottom: 20px;
-    }}
-    .l-title {{ font-size: 18px; font-weight: 900; border-bottom: 2px solid #000; padding-bottom: 8px; margin-bottom: 12px; color: #000; }}
-    .l-item {{ display: flex; justify-content: space-between; border-bottom: 1px dashed rgba(0,0,0,0.2); padding: 4px 0; color: #000; font-weight: 600; }}
-    
-    /* 组件样式 */
-    .score-card {{ background: #1A1A1A; padding: 15px; border-radius: 12px; text-align: center; border: 1px solid #333; margin-bottom: 15px; }}
-    .sc-val {{ font-size: 42px; font-weight: 900; color: #4ade80; line-height: 1; }}
-    .sc-lbl {{ font-size: 12px; color: #D1D5DB; font-weight: bold; }}
-    .wl-row {{ background-color: #1A1A1A; padding: 12px; margin-bottom: 8px; border-radius: 6px; border-left: 4px solid #555; display: flex; justify-content: space-between; align-items: center; color: #FFFFFF; }}
-    .social-box {{ display: flex; gap: 10px; margin-top: 10px; }}
-    .mc-box {{ background: #0f172a; border: 1px solid #1e293b; padding: 10px; border-radius: 6px; margin-top:5px; }}
-
-    /* 研报样式 */
-    .report-title {{ font-size: 22px; font-weight: 900; color: #FF9F1C; margin-bottom: 10px; border-left: 5px solid #FF9F1C; padding-left: 10px; }}
-    .report-text {{ font-size: 15px; line-height: 1.8; color: #E5E7EB; margin-bottom: 20px; background: #1A1A1A; padding: 15px; border-radius: 8px; }}
-    .guru-check {{ display: flex; align-items: center; margin-bottom: 8px; padding: 8px; background: #262626; border-radius: 6px; }}
-    
     /* 核心报价盘 */
     .price-container {{
         background: #1A1A1A; padding: 20px; border-radius: 15px; border: 1px solid #333;
@@ -96,12 +77,71 @@ st.markdown(f"""
         border-radius: 8px; display: inline-block;
     }}
     .ext-price {{ font-size: 16px !important; color: #9CA3AF; margin-top: 8px; font-family: monospace; }}
+
+    /* 视野黄框 */
+    .l-box {{
+        background-color: #FF9F1C; color: #000000 !important; padding: 15px;
+        border-radius: 8px; margin-bottom: 20px;
+    }}
+    .l-title {{ font-size: 18px; font-weight: 900; border-bottom: 2px solid #000; padding-bottom: 8px; margin-bottom: 12px; color: #000; }}
+    .l-item {{ display: flex; justify-content: space-between; border-bottom: 1px dashed rgba(0,0,0,0.2); padding: 4px 0; color: #000; font-weight: 600; }}
+    
+    /* 组件样式 */
+    .score-card {{ background: #1A1A1A; padding: 15px; border-radius: 12px; text-align: center; border: 1px solid #333; margin-bottom: 15px; }}
+    .sc-val {{ font-size: 42px; font-weight: 900; color: #4ade80; line-height: 1; }}
+    .sc-lbl {{ font-size: 12px; color: #D1D5DB; font-weight: bold; }}
+    .wl-row {{ background-color: #1A1A1A; padding: 12px; margin-bottom: 8px; border-radius: 6px; border-left: 4px solid #555; display: flex; justify-content: space-between; align-items: center; color: #FFFFFF; }}
+    
+    /* 研报样式 */
+    .report-title {{ font-size: 22px; font-weight: 900; color: #FF9F1C; margin-bottom: 10px; border-left: 5px solid #FF9F1C; padding-left: 10px; }}
+    .report-text {{ font-size: 15px; line-height: 1.8; color: #E5E7EB; margin-bottom: 20px; background: #1A1A1A; padding: 15px; border-radius: 8px; }}
+    .guru-check {{ display: flex; align-items: center; margin-bottom: 8px; padding: 8px; background: #262626; border-radius: 6px; }}
+    .streamlit-expanderHeader {{ background-color: #222 !important; color: #fff !important; border: 1px solid #444; }}
 </style>
 """, unsafe_allow_html=True)
 
-import yfinance as yf
+# ================= 3. 数据引擎 (Core) =================
 
-# ================= 2. 数据引擎 (V93: 恢复对比功能) =================
+# [NEW] 全行业财报地图 (12小时缓存)
+@st.cache_data(ttl=43200, show_spinner=False)
+def fetch_sector_earnings():
+    # 30只全行业龙头
+    sectors = {
+        "💻 科技七巨头": ["NVDA", "AAPL", "MSFT", "GOOG", "AMZN", "META", "TSLA"],
+        "🏦 金融/支付": ["JPM", "BAC", "V", "COIN", "BLK"],
+        "💊 医药/消费": ["LLY", "JNJ", "PG", "KO", "MCD", "NVO"],
+        "⛽ 能源/工业": ["XOM", "CVX", "CAT", "GE", "LMT"],
+        "💎 芯片/硬件": ["AMD", "AVGO", "TSM", "QCOM", "ASML"]
+    }
+    
+    flat_list = []
+    for sec, tickers in sectors.items():
+        for t in tickers: flat_list.append((t, sec))
+    
+    results = []
+    today = datetime.date.today()
+    
+    # 批量获取 (静默模式)
+    for t, sec in flat_list:
+        try:
+            s = yf.Ticker(t)
+            cal = s.calendar
+            e_date = None
+            if isinstance(cal, dict) and cal:
+                if 'Earnings Date' in cal: e_date = cal['Earnings Date'][0]
+                elif 'Earnings High' in cal: e_date = cal.get('Earnings Date', [])[0]
+            elif isinstance(cal, pd.DataFrame) and not cal.empty:
+                e_date = cal.iloc[0, 0]
+                
+            if e_date:
+                if isinstance(e_date, (datetime.datetime, pd.Timestamp)): ed = e_date.date()
+                else: ed = datetime.datetime.strptime(str(e_date).split()[0], "%Y-%m-%d").date()
+                if ed >= today:
+                    days_left = (ed - today).days
+                    results.append({"Code": t, "Sector": sec, "Date": str(ed), "Days": days_left, "Sort": days_left})
+        except: pass
+    if results: return sorted(results, key=lambda x: x['Sort'])
+    return []
 
 @st.cache_data(ttl=30, show_spinner=False)
 def fetch_realtime_price(ticker):
@@ -124,7 +164,7 @@ def fetch_realtime_price(ticker):
             elif post and abs(post - price) > 0.01: ext_price, ext_label = post, "盘后"
         except: pass
         return {"price": price, "prev": prev, "ext_price": ext_price, "ext_label": ext_label}
-    except: return {"price": 0, "prev": 0, "ext_price": None, "ext_label": ""}
+    except: return {"price": 0, "prev": 0}
 
 @st.cache_data(ttl=3600, show_spinner=False)
 def fetch_heavy_data(ticker):
@@ -141,7 +181,7 @@ def fetch_heavy_data(ticker):
             
     if h.empty: return {"history": pd.DataFrame(), "info": {}, "error": "No Data"}
 
-    # --- 指标计算 ---
+    # --- V1.0 Core Indicators ---
     h['MA20'] = h['Close'].rolling(20).mean()
     h['MA200'] = h['Close'].rolling(200).mean()
     h['TR'] = np.maximum(h['High'] - h['Low'], np.abs(h['High'] - h['Close'].shift(1)))
@@ -160,6 +200,7 @@ def fetch_heavy_data(ticker):
     wma_half = wma(h['Close'], period // 2); wma_full = wma(h['Close'], period)
     h['HMA'] = wma(2 * wma_half - wma_full, int(np.sqrt(period)))
     
+    # Advanced
     plus_dm = h['High'].diff(); minus_dm = h['Low'].diff()
     plus_dm[plus_dm < 0] = 0; minus_dm[minus_dm > 0] = 0; minus_dm = minus_dm.abs()
     tr14 = h['TR'].rolling(14).sum()
@@ -194,7 +235,7 @@ def fetch_heavy_data(ticker):
     h['UPPER'] = h['MA20'] + 2*h['STD20']; h['LOWER'] = h['MA20'] - 2*h['STD20']
     h['DC_Upper'] = h['High'].rolling(20).max(); h['DC_Lower'] = h['Low'].rolling(20).min()
 
-    # [RESTORED] VS SPY/QQQ Comparison
+    # [RESTORED] Comparison
     cmp_norm = pd.DataFrame()
     try:
         h_recent = h.iloc[-504:] 
@@ -212,33 +253,6 @@ def fetch_heavy_data(ticker):
 
     safe_info = s.info if s.info is not None else {}
     return {"history": h, "info": safe_info, "compare": cmp_norm, "error": None}
-
-@st.cache_data(ttl=43200, show_spinner=False)
-def fetch_sector_earnings():
-    sectors = {
-        "💻 科技": ["NVDA", "AAPL", "MSFT", "GOOG", "AMZN", "META", "TSLA"],
-        "🏦 金融": ["JPM", "BAC", "V", "COIN"],
-        "💊 医药": ["LLY", "JNJ"],
-        "💎 芯片": ["AMD", "AVGO", "TSM"]
-    }
-    flat_list = []
-    for sec, tickers in sectors.items():
-        for t in tickers: flat_list.append((t, sec))
-    results = []
-    today = datetime.date.today()
-    for t, sec in flat_list:
-        try:
-            s = yf.Ticker(t); cal = s.calendar; e_date = None
-            if isinstance(cal, dict) and cal:
-                if 'Earnings Date' in cal: e_date = cal['Earnings Date'][0]
-                elif 'Earnings High' in cal: e_date = cal.get('Earnings Date', [])[0]
-            elif isinstance(cal, pd.DataFrame) and not cal.empty: e_date = cal.iloc[0, 0]
-            if e_date:
-                if isinstance(e_date, (datetime.datetime, pd.Timestamp)): ed = e_date.date()
-                else: ed = datetime.datetime.strptime(str(e_date).split()[0], "%Y-%m-%d").date()
-                if ed >= today: results.append({"Code": t, "Sector": sec, "Date": str(ed), "Days": (ed - today).days, "Sort": (ed - today).days})
-        except: pass
-    return sorted(results, key=lambda x: x['Sort']) if results else []
 
 @st.cache_data(ttl=3600)
 def fetch_correlation_data(ticker):
@@ -323,32 +337,18 @@ def calculate_quant_score(info, history):
     if rec and rec < 2.0: score += 15; notes.append("机构强推")
     return min(100, max(0, int(score))), " | ".join(notes)
 
-def generate_bull_bear_thesis(df, info):
-    if df.empty: return [], []
-    bulls = []; bears = []
-    if 'Close' not in df.columns: return [], []
-    curr = df['Close'].iloc[-1]; ma200 = df['MA200'].iloc[-1]; rsi = df['RSI'].iloc[-1]
-    if curr > ma200: bulls.append("股价站上年线 (长期牛市)")
-    else: bears.append("股价跌破年线 (长期熊市)")
-    if rsi < 30: bulls.append("RSI超卖 (反弹预期)")
-    if rsi > 70: bears.append("RSI超买 (回调风险)")
-    if not isinstance(info, dict): info = {}
-    short = info.get('shortPercentOfFloat', 0)
-    if short and short > 0.2: bulls.append("逼空潜力大 (Short Squeeze)")
-    if short and short > 0.15: bears.append("做空拥挤 (机构看空)")
-    while len(bulls) < 3: bulls.append("暂无明显多头信号")
-    while len(bears) < 3: bears.append("暂无明显空头信号")
-    return bulls[:3], bears[:3]
+FAMOUS_INSTITUTIONS = {"Vanguard":"先锋", "Blackrock":"贝莱德", "Morgan Stanley":"大摩", "Goldman":"高盛", "Jpmorgan":"小摩", "Citadel":"城堡", "State Street":"道富", "Berkshire":"伯克希尔"}
+RATING_MAP = {"Buy":"买入", "Hold":"持有", "Sell":"卖出", "Strong Buy":"强购", "Overweight":"增持", "Neutral":"中性", "Outperform":"跑赢"}
 
-# ================= 5. 主程序 =================
+# ================= 5. 主程序 (Layout: V1 Classic) =================
 if 'watchlist' not in st.session_state: st.session_state.watchlist = ['TSLA', 'NVDA', 'AAPL', 'AMD', 'PLTR']
 if 'current_ticker' not in st.session_state: st.session_state.current_ticker = 'TSLA'
 
-# Sidebar
+# Sidebar (Layout: YouTube -> Search -> Earnings -> Watchlist)
 with st.sidebar:
     st.title("🦁 摩根·V1")
     
-    # [RESTORED] YouTube 回归侧边栏顶部
+    # 1. [RESTORED] YouTube Analysis at Top
     with st.expander("📺 视频分析", expanded=False):
         yt_url = st.text_input("YouTube Link", placeholder="粘贴URL...")
         if st.button("🚀 提取"):
@@ -360,10 +360,11 @@ with st.sidebar:
                 st.text_area("内容:", f"{txt[:6000]}...", height=150)
             except Exception as e: st.error(f"失败: {e}")
 
+    # 2. Search
     new_ticker = st.text_input("🔍 搜索", "").upper()
     if new_ticker: st.session_state.current_ticker = new_ticker; st.rerun()
 
-    # [NEW] 财报地图 (作为侧边栏小插件，不影响主页)
+    # 3. [NEW] Earnings Radar (Sidebar)
     st.markdown("---")
     st.caption("📅 财报雷达")
     earnings_list = fetch_sector_earnings()
@@ -374,6 +375,7 @@ with st.sidebar:
                 st.markdown(f"<div class='earning-card earning-alert'><div class='ec-row'><span class='ec-ticker'>{item['Code']}</span><span class='ec-date'>{item['Date']}</span></div><div class='ec-sector'>{item['Sector']}</div></div>", unsafe_allow_html=True)
         else: st.caption("近期无关注财报")
 
+    # 4. Watchlist
     st.markdown("---")
     st.caption("我的自选")
     for t in st.session_state.watchlist:
@@ -385,7 +387,7 @@ with st.sidebar:
             st.session_state.current_ticker = t; st.rerun()
         c2.markdown(f"<span style='color:{c_color}'>{chg:.2%}</span>", unsafe_allow_html=True)
 
-# Main Page
+# Main Page Navigation
 page = st.sidebar.radio("📌 导航", ["🚀 股票分析", "🗓️ 财报地图", "📖 功能说明书"])
 
 if page == "🚀 股票分析":
@@ -428,7 +430,7 @@ if page == "🚀 股票分析":
     rt_price = p if p > 0 else (h['Close'].iloc[-1] if not h.empty else 0)
 
     if not h.empty:
-        # L-Box
+        # L-Box (交易计划)
         curr = h['Close'].iloc[-1]
         ma20 = h['MA20'].iloc[-1]; ma200 = h['MA200'].iloc[-1]
         res = h['High'].tail(20).max(); sup = h['Low'].tail(20).min()
@@ -442,7 +444,7 @@ if page == "🚀 股票分析":
         </div>
         """, unsafe_allow_html=True)
 
-        # [RESTORED] VS SPY/QQQ Comparison Chart
+        # [RESTORED] VS SPY/QQQ Comparison Chart (Below L-Box)
         st.subheader("🆚 跑赢大盘了吗?")
         cmp = heavy.get('compare', pd.DataFrame())
         if not cmp.empty:
@@ -556,9 +558,9 @@ if page == "🚀 股票分析":
 
     with tabs[3]:
         st.header(f"🎓 {ticker} 深度研报")
-        st.markdown(f"<div class='report-text'>{i.get('longBusinessSummary', '暂无描述')}</div>", unsafe_allow_html=True)
+        st.markdown(f"<div class='report-text'>{safe_i.get('longBusinessSummary', '暂无描述')}</div>", unsafe_allow_html=True)
         st.markdown("<div class='report-title'>2. 🏰 护城河</div>", unsafe_allow_html=True)
-        gm = i.get('grossMargins', 0); roe = i.get('returnOnEquity', 0)
+        gm = safe_i.get('grossMargins', 0); roe = safe_i.get('returnOnEquity', 0)
         c_m1, c_m2 = st.columns(2)
         c_m1.markdown(f"<div class='score-card'><div class='sc-lbl'>毛利率</div><div class='sc-val' style='color:{'#4ade80' if gm>0.4 else '#f87171'}'>{fmt_pct(gm)}</div></div>", unsafe_allow_html=True)
         c_m2.markdown(f"<div class='score-card'><div class='sc-lbl'>ROE</div><div class='sc-val' style='color:{'#4ade80' if roe>0.15 else '#f87171'}'>{fmt_pct(roe)}</div></div>", unsafe_allow_html=True)
@@ -576,8 +578,17 @@ elif page == "🗓️ 财报地图":
         fig = px.treemap(df, path=[px.Constant("全市场"), 'Sector', 'Code'], values=np.ones(len(df)), color='Days', color_continuous_scale='RdYlGn', hover_data=['Date', 'Days'])
         fig.update_layout(height=500, template="plotly_dark", margin=dict(t=30, l=0, r=0, b=0))
         st.plotly_chart(fig, use_container_width=True)
+        with st.expander("查看详细时间表"): st.dataframe(df[['Code', 'Sector', 'Date', 'Days']].set_index('Code'), use_container_width=True)
     else: st.info("数据更新中...")
 
 else:
     st.title("📚 摩根·功能说明书 (Wiki)")
-    st.markdown("这里是功能说明书...")
+    st.markdown("""
+    <div class='wiki-card'><div class='wiki-title'>1. 视野·交易计划 (Vision L-Box)</div><div class='wiki-text'><b>核心逻辑：</b> L战法系统。<br><b>黄框</b>：系统大脑。<br><span class='wiki-tag'>R1/R2</span> 压力位。<br><span class='wiki-tag'>S1/S2</span> 支撑位。</div></div>
+    <div class='wiki-card'><div class='wiki-title'>2. 神奇九转 (TD Sequential)</div><div class='wiki-text'><b>原理：</b> 寻找衰竭点。<br><span style='color:#f87171'><b>红色 9</b></span>：上涨力竭(卖)。<br><span style='color:#4ade80'><b>绿色 9</b></span>：下跌力竭(买)。</div></div>
+    <div class='wiki-card'><div class='wiki-title'>3. VWAP (机构线)</div><div class='wiki-text'><b>原理：</b> 机构持仓成本。<br>股价 > VWAP：机构护盘。<br>股价 < VWAP：机构出货。</div></div>
+    <div class='wiki-card'><div class='wiki-title'>4. 蒙特卡洛预测 (Monte Carlo)</div><div class='wiki-text'><b>原理：</b> 模拟未来30天100种走势。<br><b>悲观底线</b>：95%概率不跌破的止损位。</div></div>
+    <div class='wiki-card'><div class='wiki-title'>5. 六维雷达 (Spider)</div><div class='wiki-text'><b>原理：</b> 公司体检表。面积越大，基本面越完美。</div></div>
+    <div class='wiki-card'><div class='wiki-title'>6. SuperTrend</div><div class='wiki-text'><b>原理：</b> 趋势跟踪。<b>绿色</b>持有，<b>红色</b>空仓。</div></div>
+    <div class='wiki-card'><div class='wiki-title'>7. FVG (缺口)</div><div class='wiki-text'><b>原理：</b> 机构暴力拉升留下的<b>紫色方块</b>。股价常会回调填补。</div></div>
+    """, unsafe_allow_html=True)
