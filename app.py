@@ -17,7 +17,7 @@ for key in ['HTTP_PROXY', 'HTTPS_PROXY', 'http_proxy', 'https_proxy']:
 
 ICON_URL = "https://cdn-icons-png.flaticon.com/512/10452/10452449.png"
 
-st.set_page_config(page_title="摩根·V1 (Final)", layout="wide", page_icon="🦁")
+st.set_page_config(page_title="摩根·V1 (Lite)", layout="wide", page_icon="🦁")
 
 # ================= 2. 样式死锁 (UI) =================
 st.markdown(f"""
@@ -49,7 +49,7 @@ st.markdown(f"""
     .ec-row {{ display: flex; justify-content: space-between; align-items: center; font-size: 13px; }}
     .ec-ticker {{ font-weight: bold; color: #fff; }}
     .ec-date {{ color: #cbd5e1; font-family: monospace; }}
-    .ec-time {{ font-size: 10px; color: #fbbf24; margin-left: 5px; }} 
+    .ec-time {{ font-size: 11px; color: #fbbf24; margin-left: 5px; font-weight: bold; }}
     .ec-sector {{ font-size: 10px; padding: 1px 4px; border-radius: 3px; background: #333; color: #aaa; margin-top: 4px; display: inline-block;}}
 
     /* 核心报价盘 */
@@ -176,6 +176,7 @@ def fetch_financial_data_v105(ticker):
     wma_half = wma(h['Close'], period // 2); wma_full = wma(h['Close'], period)
     h['HMA'] = wma(2 * wma_half - wma_full, int(np.sqrt(period)))
     
+    # Advanced
     plus_dm = h['High'].diff(); minus_dm = h['Low'].diff()
     plus_dm[plus_dm < 0] = 0; minus_dm[minus_dm > 0] = 0; minus_dm = minus_dm.abs()
     tr14 = h['TR'].rolling(14).sum()
@@ -209,16 +210,41 @@ def fetch_financial_data_v105(ticker):
         cmp_norm = cmp_df.iloc[start:] / cmp_df.iloc[start] - 1
     except: pass
 
+    # Safe fetch for all modules
     safe_info = {}
-    try:
-        safe_info = s.info
-        if safe_info is None: safe_info = {}
-    except: safe_info = {}
+    try: safe_info = s.info if s.info else {}
+    except: pass
+    
+    upgrades = None
+    try: upgrades = s.upgrades_downgrades
+    except: pass
+    
+    inst = None
+    try: inst = s.institutional_holders
+    except: pass
+    
+    insider = None
+    try: insider = s.insider_transactions
+    except: pass
+    
+    fin = None
+    try: fin = s.quarterly_financials
+    except: pass
 
-    return {"history": h, "info": safe_info, "compare": cmp_norm, "error": None, "upgrades": s.upgrades_downgrades, "inst": s.institutional_holders, "insider": s.insider_transactions, "fin": s.quarterly_financials, "options": None}
+    return {
+        "history": h, 
+        "info": safe_info, 
+        "compare": cmp_norm, 
+        "error": None, 
+        "upgrades": upgrades, 
+        "inst": inst, 
+        "insider": insider, 
+        "fin": fin, 
+        "options": None
+    }
 
 @st.cache_data(ttl=43200, show_spinner=False)
-def fetch_sector_earnings():
+def fetch_sector_earnings_v105():
     sectors = {
         "💻 科技": ["NVDA", "AAPL", "MSFT", "GOOG", "AMZN", "META", "TSLA"],
         "🏦 金融": ["JPM", "BAC", "V", "COIN", "BLK"],
@@ -231,15 +257,33 @@ def fetch_sector_earnings():
         for t in tickers: flat_list.append((t, sec))
     results = []
     today = datetime.date.today()
+    
     for t, sec in flat_list:
         try:
-            s = yf.Ticker(t); cal = s.calendar; e_date = None
+            s = yf.Ticker(t)
+            time.sleep(0.1) 
+            
+            cal = None
+            try: cal = s.calendar
+            except: pass
+            
+            e_date = None
             if isinstance(cal, dict) and cal:
                 if 'Earnings Date' in cal: e_date = cal['Earnings Date'][0]
             elif isinstance(cal, pd.DataFrame) and not cal.empty: e_date = cal.iloc[0, 0]
+            
             if e_date:
                 ed = datetime.datetime.strptime(str(e_date).split()[0], "%Y-%m-%d").date()
-                if ed >= today: results.append({"Code": t, "Sector": sec, "Date": str(ed), "Days": (ed - today).days, "Sort": (ed - today).days})
+                if ed >= today:
+                    # [NEW] Beijing Time Logic
+                    # USA Market Close: 04:00 AM (Winter) / 05:00 AM (Summer) Beijing Next Day
+                    # USA Market Open: 22:30 PM (Winter) / 21:30 PM (Summer) Beijing
+                    # Tech giants usually AMC.
+                    time_label = "20:00 (盘前)" 
+                    if t in ['NVDA', 'TSLA', 'AAPL', 'AMZN', 'GOOG', 'META', 'AMD', 'MSFT']:
+                        time_label = "次日04:20 (盘后)"
+                    
+                    results.append({"Code": t, "Sector": sec, "Date": str(ed), "Days": (ed - today).days, "Time": time_label, "Sort": (ed - today).days})
         except: pass
     return sorted(results, key=lambda x: x['Sort']) if results else []
 
@@ -446,7 +490,7 @@ with st.sidebar:
     # Earnings Radar
     st.markdown("---")
     st.caption("📅 财报雷达 (7天内高亮)")
-    earnings_list = fetch_sector_earnings()
+    earnings_list = fetch_sector_earnings_v105()
     if earnings_list:
         for item in earnings_list[:10]: 
             is_urgent = item['Days'] <= 7
@@ -460,6 +504,7 @@ with st.sidebar:
                 </div>
                 <div class='ec-row'>
                     <span class='ec-sector'>{item['Sector']}</span>
+                    <span class='ec-time'>{item['Time']}</span>
                 </div>
             </div>
             """, unsafe_allow_html=True)
@@ -512,6 +557,7 @@ if page == "🚀 股票分析":
 
     # 2. 深度数据
     with st.spinner("🦁 正在调取机构底仓数据..."):
+        # [FIX] V105 call
         heavy = fetch_financial_data_v105(ticker)
 
     if heavy['error']:
@@ -590,7 +636,7 @@ if page == "🚀 股票分析":
             fig.update_layout(height=400, margin=dict(l=0,r=0,t=10,b=0), template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', xaxis_rangeslider_visible=False)
             st.plotly_chart(fig, use_container_width=True)
 
-        # Seasonality & Monte Carlo
+        # Seasonality
         with st.expander("📅 季节性 & 蒙特卡洛", expanded=False):
             c_seas, c_mc = st.columns(2)
             with c_seas:
@@ -617,7 +663,7 @@ if page == "🚀 股票分析":
                 p5 = np.percentile(final_prices, 5); p95 = np.percentile(final_prices, 95)
                 st.markdown(f"<div class='mc-box'><span style='color:#fca5a5'>📉 底线(P5): <b>${p5:.2f}</b></span> <span style='color:#86efac'>🚀 乐观(P95): <b>${p95:.2f}</b></span></div>", unsafe_allow_html=True)
 
-        # Advanced Indicators (Split View with Explanations)
+        # Advanced Indicators
         with st.expander("📉 进阶指标 (Z-Score/ADX/CCI)", expanded=False):
             # Z-Score
             st.markdown("##### 1. 乖离率 (Z-Score)")
@@ -692,7 +738,6 @@ if page == "🚀 股票分析":
             if heavy.get('inst') is not None and not heavy['inst'].empty:
                 idf = heavy['inst'].copy()
                 idf = idf.rename(columns={'Holder': '机构名称', 'pctHeld': '持仓占比', 'Shares': '持有股数', 'Value': '持仓市值', 'Date Reported': '报告日期'})
-                # Add link logic
                 st.dataframe(
                     idf[['机构名称', '持仓占比', '持有股数', '持仓市值']], 
                     column_config={
@@ -712,7 +757,7 @@ if page == "🚀 股票分析":
             if heavy.get('insider') is not None and not heavy['insider'].empty:
                 for index, row in heavy['insider'].head(15).iterrows():
                     trans_text = str(row.get('Text', ''))
-                    # Translate Action
+                    # [FIX] Smart Translation for Insider Text
                     action = "❓ 未知"
                     color = "#9ca3af"
                     if "Sale" in trans_text or "Sold" in trans_text:
